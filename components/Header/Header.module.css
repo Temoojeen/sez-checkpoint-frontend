@@ -1,0 +1,377 @@
+/* Header.module.css */
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 90px;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  border-bottom: 3px solid black;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Video Background */
+.videoBackground {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background: white;
+}
+
+.video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* width: auto; */
+  background: white;
+  height: 400px;
+  transform: translateX(-50%) translateY(-50%);
+  object-fit: contain; /* Видео полностью видно, но могут быть черные полосы */
+  object-position: center;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+    background-image: url(../../public/assets/images/5.jpg);
+background-size: contain;
+  z-index: -1;
+}
+
+.fallback {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header.scrolled .videoBackground {
+  opacity: 0.7;
+}
+
+.header.scrolled .overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+/* Logo Styles */
+.logo {
+  background: white;
+  width: 255px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.logo_img {
+  width: 240px;
+  height: 85px;
+  object-fit: contain;
+}
+
+.logoText {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.logoText:hover {
+  color: #ff6b6b;
+}
+
+/* Navigation Styles */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navList {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navLink {
+  position: absolute;
+  left: 40;
+  top: 40;
+  color: white;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  position: relative;
+  background: black;
+  padding: 8px 12px;
+  border-radius: 50px;
+  border: 3px solid white;
+}
+
+.navLink:hover {
+  color: #ff6b6b;
+  transform: translateY(-2px);
+}
+
+.navLink::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #ff6b6b;
+  transition: width 0.3s ease;
+}
+
+.navLink:hover::after {
+  width: 100%;
+}
+
+.navLink.activeLink {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+}
+
+.navLink.activeLink::after {
+  width: 100%;
+}
+
+/* User Section Styles */
+.userSection {
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  backdrop-filter: blur(5px);
+  border: 3px solid black;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.userAvatar {
+  width: 36px;
+  height: 36px;
+  background: gray;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userAvatar svg {
+  width: 20px;
+  height: 20px;
+  color: black;
+}
+
+.userDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.userName {
+  color: black;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.logoutButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  border: 1px solid red;
+  color: red;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.logoutButton:hover {
+  background: rgba(255, 107, 107, 0.3);
+  transform: translateY(-2px);
+}
+
+.logoutIcon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Mobile Menu Button */
+.menuButton {
+  display: none;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  position: relative;
+  z-index: 1001;
+  backdrop-filter: blur(5px);
+}
+
+.menuIcon {
+  position: relative;
+  width: 20px;
+  height: 2px;
+  background: white;
+  transition: all 0.3s ease;
+  display: block;
+  margin: 0 auto;
+}
+
+.menuIcon::before,
+.menuIcon::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.menuIcon::before {
+  top: -6px;
+}
+
+.menuIcon::after {
+  bottom: -6px;
+}
+
+.menuButton.active .menuIcon {
+  background: transparent;
+}
+
+.menuButton.active .menuIcon::before {
+  transform: rotate(45deg);
+  top: 0;
+}
+
+.menuButton.active .menuIcon::after {
+  transform: rotate(-45deg);
+  bottom: 0;
+}
+
+.menuButton:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Responsive Design */
+@media (max-width: 968px) {
+  .menuButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 80%;
+    max-width: 400px;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 2rem;
+    transition: right 0.3s ease;
+    padding: 5rem 2rem 2rem;
+    box-shadow: -5px 0 30px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+  }
+
+  .nav.active {
+    right: 0;
+  }
+
+  .navList {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+  }
+
+  .navLink {
+    font-size: 1.2rem;
+  }
+
+  .userSection {
+    width: 100%;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    margin-top: 1rem;
+  }
+
+  .userInfo {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .logoutButton {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  .logo {
+    width: 200px;
+  }
+
+  .logo_img {
+    width: 180px;
+    height: 65px;
+  }
+}

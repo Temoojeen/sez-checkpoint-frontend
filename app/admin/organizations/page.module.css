@@ -1,0 +1,805 @@
+.container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* padding: 24px; */
+  width: 100%;
+  height: 100%;
+
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Заголовок */
+.header {
+  margin-bottom: 32px;
+  animation: slideIn 0.4s ease-out;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1a1a1a 0%, #4a5568 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+}
+
+/* Панель действий */
+.actionPanel {
+  width: 90%;
+  margin: 0 auto;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #eaeef2;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
+  animation: slideIn 0.4s ease-out 0.1s both;
+  margin-top: 50px;
+}
+
+.actionPanel:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.actionBar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (min-width: 640px) {
+  .actionBar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+/* Поиск */
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .searchWrapper {
+    max-width: 380px;
+  }
+}
+
+.searchWrapper i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 18px;
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 70%;
+  margin: 0 auto;
+  padding: 12px 16px 12px 44px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.searchInput:hover {
+  border-color: #cbd5e1;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.searchWrapper:focus-within i {
+  color: #3b82f6;
+}
+
+.searchInput::placeholder {
+  color: #94a3b8;
+  transition: color 0.2s ease;
+}
+
+.searchInput:focus::placeholder {
+  color: #cbd5e1;
+}
+
+/* Кнопка добавления */
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.addButton::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.addButton:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+.addButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.addButton:active {
+  transform: translateY(0);
+}
+
+.addButton i {
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.addButton:hover i {
+  transform: rotate(90deg);
+}
+
+/* Контейнер таблицы */
+.tableContainer {
+  width: 90%;
+  margin: 0 auto;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #eaeef2;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
+  animation: slideIn 0.4s ease-out 0.2s both;
+}
+
+.tableContainer:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+}
+
+/* Кастомный скроллбар */
+.tableWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tableWrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Таблица */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.tableHead {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.tableHeader {
+  padding: 16px 24px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.tableHeader:hover {
+  color: #1e293b;
+}
+
+.tableHeader::after {
+  content: '↕️';
+  position: absolute;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tableHeader:hover::after {
+  opacity: 0.5;
+}
+
+.tableBody {
+  background: white;
+}
+
+.tableRow {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-bottom: 1px solid #eef2f6;
+  cursor: pointer;
+}
+
+.tableRow:hover {
+  background: linear-gradient(90deg, #fafbff 0%, #ffffff 100%);
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tableCell {
+  padding: 20px 24px;
+  font-size: 15px;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+/* Название организации */
+.orgName {
+  font-weight: 600;
+  color: #0f172a;
+  transition: color 0.2s ease;
+  position: relative;
+  display: inline-block;
+}
+
+.orgName::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  transition: width 0.3s ease;
+}
+
+.tableRow:hover .orgName::after {
+  width: 100%;
+}
+
+/* БИН */
+.bin {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  font-size: 13px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #eef2f6 100%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #334155;
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+.tableRow:hover .bin {
+  background: linear-gradient(135deg, #e6f0ff 0%, #e0e9ff 100%);
+  transform: scale(1.02);
+}
+
+/* Контактная информация */
+.contactInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contactItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.contactItem:hover {
+  transform: translateX(4px);
+}
+
+.contactItem i {
+  font-size: 14px;
+  color: #94a3b8;
+  transition: color 0.2s ease;
+}
+
+.contactItem:hover i {
+  color: #3b82f6;
+}
+
+/* Дата */
+.date {
+  color: #64748b;
+  font-size: 13px;
+  font-family: 'SF Mono', monospace;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+.tableRow:hover .date {
+  background: #eef2ff;
+  color: #3b82f6;
+}
+
+/* Действия */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.actionButton::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  transition: width 0.4s, height 0.4s;
+  opacity: 0.1;
+}
+
+.actionButton:active::before {
+  width: 100%;
+  height: 100%;
+}
+
+.actionButton i {
+  font-size: 18px;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.viewButton {
+  color: #3b82f6;
+}
+
+.viewButton:hover {
+  background: #eff6ff;
+  transform: translateY(-2px);
+}
+
+.viewButton:hover i {
+  transform: scale(1.1);
+}
+
+.editButton {
+  color: #10b981;
+}
+
+.editButton:hover {
+  background: #ecfdf3;
+  transform: translateY(-2px);
+}
+
+.editButton:hover i {
+  transform: scale(1.1);
+}
+
+.deleteButton {
+  color: #ef4444;
+}
+
+.deleteButton:hover {
+  background: #fef2f2;
+  transform: translateY(-2px);
+}
+
+.deleteButton:hover i {
+  transform: scale(1.1);
+}
+
+/* Пустое состояние */
+.emptyState {
+  padding: 64px 24px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 16px;
+  background: linear-gradient(135deg, #fafbff 0%, #ffffff 100%);
+}
+
+/* Загрузка с улучшенной анимацией */
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.loadingContent {
+  text-align: center;
+  position: relative;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-right-color: #10b981;
+  border-bottom-color: #f59e0b;
+  border-left-color: #ef4444;
+  border-radius: 50%;
+  animation: spin 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+  margin: 0 auto 16px;
+  position: relative;
+}
+
+.spinner::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #10b981, #f59e0b, #ef4444);
+  opacity: 0.3;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+.loadingText {
+  color: #64748b;
+  font-size: 16px;
+  position: relative;
+  display: inline-block;
+}
+
+.loadingText::after {
+  content: '...';
+  position: absolute;
+  animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%, 20% {
+    content: '.';
+  }
+  40% {
+    content: '..';
+  }
+  60%, 100% {
+    content: '...';
+  }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .actionPanel {
+    padding: 16px;
+  }
+
+  .tableCell {
+    padding: 12px 16px;
+  }
+
+  .actions {
+    gap: 4px;
+  }
+
+  .actionButton {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .actionButton i {
+    font-size: 16px;
+  }
+  
+  .bin, .date {
+    font-size: 12px;
+  }
+}
+
+/* Планшеты */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .container {
+    padding: 20px;
+  }
+  
+  .tableCell {
+    padding: 16px 20px;
+  }
+}
+
+/* Темная тема */
+@media (prefers-color-scheme: dark) {
+  .container {
+    background: #0f172a;
+  }
+
+  .title {
+    background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    color: #94a3b8;
+  }
+
+  .actionPanel,
+  .tableContainer {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .tableHead {
+    background: linear-gradient(135deg, #1a2634 0%, #1e293b 100%);
+  }
+
+  .tableHeader {
+    color: #94a3b8;
+  }
+  
+  .tableHeader:hover {
+    color: #cbd5e1;
+  }
+
+  .tableBody {
+    background: #1e293b;
+  }
+
+  .tableRow {
+    border-color: #334155;
+  }
+
+  .tableRow:hover {
+    background: linear-gradient(90deg, #263445 0%, #1e293b 100%);
+  }
+
+  .tableCell {
+    color: #e2e8f0;
+  }
+
+  .orgName {
+    color: #f1f5f9;
+  }
+
+  .bin {
+    background: linear-gradient(135deg, #334155 0%, #2d3a4a 100%);
+    color: #cbd5e1;
+  }
+  
+  .tableRow:hover .bin {
+    background: linear-gradient(135deg, #3b4a60 0%, #334155 100%);
+  }
+
+  .contactItem {
+    color: #94a3b8;
+  }
+  
+  .date {
+    background: #334155;
+    color: #94a3b8;
+  }
+  
+  .tableRow:hover .date {
+    background: #3b4a60;
+  }
+
+  .searchInput {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .searchInput:focus {
+    border-color: #3b82f6;
+  }
+  
+  .emptyState {
+    background: linear-gradient(135deg, #1e293b 0%, #1a2634 100%);
+    color: #64748b;
+  }
+  
+  .loadingText {
+    color: #94a3b8;
+  }
+  
+  .tableWrapper::-webkit-scrollbar-track {
+    background: #1e293b;
+  }
+  
+  .tableWrapper::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+  
+  .tableWrapper::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+}
+
+/* Анимация для новых элементов */
+.tableRow {
+  animation: fadeInRow 0.3s ease-out backwards;
+}
+
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Stagger animation for rows */
+.tableRow:nth-child(1) { animation-delay: 0.05s; }
+.tableRow:nth-child(2) { animation-delay: 0.1s; }
+.tableRow:nth-child(3) { animation-delay: 0.15s; }
+.tableRow:nth-child(4) { animation-delay: 0.2s; }
+.tableRow:nth-child(5) { animation-delay: 0.25s; }
+.tableRow:nth-child(6) { animation-delay: 0.3s; }
+.tableRow:nth-child(7) { animation-delay: 0.35s; }
+.tableRow:nth-child(8) { animation-delay: 0.4s; }
+.tableRow:nth-child(9) { animation-delay: 0.45s; }
+.tableRow:nth-child(10) { animation-delay: 0.5s; }
+
+/* Улучшенные состояния фокуса для доступности */
+.actionButton:focus-visible,
+.addButton:focus-visible,
+.searchInput:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Эффект ripple для кнопок */
+.actionButton {
+  position: relative;
+  overflow: hidden;
+}
+
+.actionButton .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background-color: currentColor;
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}

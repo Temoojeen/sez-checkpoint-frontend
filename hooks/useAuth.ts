@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import authService from '@/services/auth.service';
 import { User } from '@/types';
+import { getDashboardPath } from '@/utils/roleRedirect';
 
 interface LoginResult {
   success: boolean;
   error?: string;
 }
+
 interface ApiError {
   response?: {
     data?: {
@@ -17,6 +19,7 @@ interface ApiError {
     };
   };
 }
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +52,9 @@ export function useAuth() {
         sameSite: 'lax'
       });
       
-      router.push('/dashboard');
+      const dashboardPath = getDashboardPath(response.user.roleId);
+      router.push(dashboardPath);
+      
       return { success: true };
     } catch (error) {
       const apiError = error as ApiError;
@@ -69,12 +74,22 @@ export function useAuth() {
     router.push('/login');
   };
 
+  const hasRole = (allowedRoles: number[]): boolean => {
+    if (!user) return false;
+    return allowedRoles.includes(user.roleId);
+  };
+
   return {
     user,
-    loading,
+    loading, // Это isLoading
     login,
     logout,
+    hasRole,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
+    isAdmin: user?.roleId === 1,
+    isOperator: user?.roleId === 2,
+    isSupervisor: user?.roleId === 3,
+    isParticipant: user?.roleId === 4,
+    isSecurity: user?.roleId === 5,
   };
 }
