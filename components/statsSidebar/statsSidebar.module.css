@@ -1,0 +1,47 @@
+.statsCard {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    width: 250px;
+  }
+  
+  .statsTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  
+  .statsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  
+  .statItem {
+    text-align: center;
+  }
+  
+  .statValue {
+    font-size: 20px;
+    font-weight: 600;
+  }
+  
+  .statValueGranted {
+    font-size: 20px;
+    font-weight: 600;
+    color: #10b981;
+  }
+  
+  .statValueDenied {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ef4444;
+  }
+  
+  .statLabel {
+    font-size: 12px;
+    color: #64748b;
+  }

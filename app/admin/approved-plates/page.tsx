@@ -504,6 +504,7 @@ export default function AdminApprovedPlatesPage() {
               </div>
 
               <div className={styles.formRow}>
+                {!editingPlate &&
                 <div className={styles.formGroup}>
                   <label htmlFor="organizationId" className={styles.label}>
                     Организация <span className={styles.required}>*</span>
@@ -523,7 +524,7 @@ export default function AdminApprovedPlatesPage() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div>}
 
                 <div className={styles.formGroup}>
                   <label htmlFor="listId" className={styles.label}>

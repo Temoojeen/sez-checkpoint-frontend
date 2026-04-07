@@ -236,6 +236,13 @@ export default function AdminDashboard() {
               <span className={styles.actionText}>Списки</span>
             </Link>
             <Link
+              href="/admin/access-logs/"
+              className={styles.actionCard}
+            >
+              <i className={`ri-list-check-3 ${styles.actionIcon}`}></i>
+              <span className={styles.actionText}>История</span>
+            </Link>
+            <Link
               href="admin/applications"
               className={styles.actionCard}
             >

@@ -3,7 +3,7 @@ import authService from './auth.service';
 import Cookies from 'js-cookie';
 
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://10.24.32.31/api',
   headers: {
     'Content-Type': 'application/json',
   },
