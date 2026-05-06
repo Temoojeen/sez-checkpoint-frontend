@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import applicationService from '@/services/application.service';
@@ -11,15 +10,34 @@ import { AccessList, Application, ApiError } from '@/types';
 import { formatDate, getStatusBadge } from '@/utils/format';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
+import FormControl from '@mui/material/FormControl';
+import FormGroup from '@mui/material/FormGroup';
+import FormHelperText from '@mui/material/FormHelperText';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 export default function ParticipantPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [smartParking, setSmartParking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [availableLists, setAvailableLists] = useState<AccessList[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Получаем максимальную дату - 31 декабря текущего года
+  const getMaxDate = () => {
+    const currentYear = new Date().getFullYear();
+    return `${currentYear}-12-31`;
+  };
+
+  // Получаем дату по умолчанию - 31 декабря текущего года
+  const getDefaultValidUntil = () => {
+    const currentYear = new Date().getFullYear();
+    return `${currentYear}-12-31`;
+  };
+
   const [formData, setFormData] = useState({
     contractNumber: '',
     plateNumber: '',
@@ -28,7 +46,7 @@ export default function ParticipantPage() {
     vehicleColor: '',
     listId: '',
     validFrom: '',
-    validUntil: '',
+    validUntil: getDefaultValidUntil(), // По умолчанию 31 декабря
     notes: '',
   });
 
@@ -45,6 +63,7 @@ export default function ParticipantPage() {
     if (user && user.roleId === 4 && !dataLoaded) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataLoaded]);
 
   const fetchData = useCallback(async () => {
@@ -80,86 +99,107 @@ export default function ParticipantPage() {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const { name, value } = e.target;
+  
+  // Если это поле номера - автоматически приводим к верхнему регистру
+  if (name === 'plateNumber') {
+    setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+  } else {
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  // Валидация
-  if (!formData.contractNumber.trim()) {
-    toast.error('Введите номер договора');
-    return;
-  }
-  
-  if (!formData.plateNumber.trim()) {
-    toast.error('Введите государственный номер машины');
-    return;
-  }
-  
-  if (!formData.listId) {
-    toast.error('Выберите список для подачи заявки');
-    return;
-  }
-
-  try {
-    setSubmitting(true);
-    
-    await applicationService.create({
-      contractNumber: formData.contractNumber.trim(),
-      plateNumber: formData.plateNumber.toUpperCase().trim(),
-      listId: formData.listId,
-      vehicleBrand: formData.vehicleBrand.trim() || undefined,
-      vehicleModel: formData.vehicleModel.trim() || undefined,
-      vehicleColor: formData.vehicleColor.trim() || undefined,
-      validFrom: formData.validFrom || undefined,
-      validUntil: formData.validUntil || undefined,
-      notes: formData.notes.trim() || undefined,
-    });
-    
-    toast.success('Заявка успешно отправлена');
-    
-    // Очищаем форму
-    setFormData({
-      contractNumber: '',
-      plateNumber: '',
-      vehicleBrand: '',
-      vehicleModel: '',
-      vehicleColor: '',
-      listId: '',
-      validFrom: '',
-      validUntil: '',
-      notes: '',
-    });
-    
-    // Обновляем список заявок
-    const updatedApplications = await applicationService.getMyApplications();
-    setApplications(updatedApplications);
-    
-  } catch (error: unknown) {
-    console.error('Error creating application:', error);
-    
-    if (error && typeof error === 'object' && 'response' in error) {
-      const apiError = error as ApiError;
-      if (apiError.response?.data?.error) {
-        // Показываем конкретную ошибку от сервера
-        toast.error(apiError.response.data.error);
-      } else {
-        toast.error('Ошибка при создании заявки');
-      }
-    } else if (error instanceof Error) {
-      toast.error(error.message);
-    } else {
-      toast.error('Ошибка при создании заявки');
-    }
-  } finally {
-    setSubmitting(false);
   }
 };
 
-  const handleLogout = () => {
-    logout();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Валидация
+    if (!formData.contractNumber.trim()) {
+      toast.error('Введите номер договора');
+      return;
+    }
+    
+    if (!formData.plateNumber.trim()) {
+      toast.error('Введите государственный номер машины');
+      return;
+    }
+    
+    if (!formData.listId) {
+      toast.error('Выберите список для подачи заявки');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Если дата не указана или пустая, используем 31 декабря текущего года
+      const validUntil = formData.validUntil || getDefaultValidUntil();
+      
+      await applicationService.create({
+        contractNumber: formData.contractNumber.trim(),
+        plateNumber: formData.plateNumber.toUpperCase().trim(),
+        listId: formData.listId,
+        vehicleBrand: formData.vehicleBrand.trim() || undefined,
+        vehicleModel: formData.vehicleModel.trim() || undefined,
+        vehicleColor: formData.vehicleColor.trim() || undefined,
+        validFrom: formData.validFrom || undefined,
+        validUntil: validUntil,
+        notes: formData.notes.trim() || undefined,
+        smartParking: smartParking,
+      });
+      
+      if (smartParking) {
+        toast.success('Заявки на КПП 1 и SmartParking успешно отправлены');
+      } else {
+        toast.success('Заявка успешно отправлена');
+      }
+      
+      // Очищаем форму
+      setFormData({
+        contractNumber: '',
+        plateNumber: '',
+        vehicleBrand: '',
+        vehicleModel: '',
+        vehicleColor: '',
+        listId: '',
+        validFrom: '',
+        validUntil: getDefaultValidUntil(), // Сбрасываем на 31 декабря
+        notes: '',
+      });
+      setSmartParking(false);
+      
+      // Обновляем список заявок
+      const updatedApplications = await applicationService.getMyApplications();
+      setApplications(updatedApplications);
+      
+    } catch (error: unknown) {
+      console.error('Error creating application:', error);
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as ApiError;
+        if (apiError.response?.data?.error) {
+          toast.error(apiError.response.data.error);
+        } else {
+          toast.error('Ошибка при создании заявки');
+        }
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Ошибка при создании заявки');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getDestinationBadge = (destination: string) => {
+    switch (destination) {
+      case 'kpp1':
+        return { text: 'КПП 1', color: 'blue' };
+      case 'smartparking':
+        return { text: 'SmartParking', color: 'green' };
+      default:
+        return { text: destination, color: 'gray' };
+    }
   };
 
   if (loading) {
@@ -175,42 +215,8 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Личный кабинет участника</h1>
-            <p className={styles.subtitle}>
-              Добро пожаловать, {user?.fullName || user?.username}
-            </p>
-            {user?.organizationName && (
-              <p className={styles.organizationName}>
-                <i className="ri-building-4-line"></i>
-                {user.organizationName}
-              </p>
-            )}
-          </div>
-          <div className={styles.userInfo}>
-  <Link href="/participant/lists" className={styles.viewListsLink}>
-    <i className="ri-list-check-3"></i>
-    <span>Мои номера</span>
-  </Link>
-  <span className={styles.roleBadge}>
-    Участник
-  </span>
-  <button
-    onClick={handleLogout}
-    className={styles.logoutButton}
-  >
-    <i className="ri-logout-box-line"></i>
-    <span>Выйти</span>
-  </button>
-</div>
-        </div>
-      </header> */}
       <Header role={"participant"}/>
       <main className={styles.main}>
-      
         <div className={styles.grid}>
           {/* Левая колонка - Форма подачи заявки */}
           <div className={styles.formSection}>
@@ -219,6 +225,26 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <i className="ri-file-add-line"></i>
                 Подать заявку на пропуск
               </h2>
+              
+              {/* SmartParking переключатель */}
+              <div className={styles.smartSwitch}>
+                <FormControl>
+                  <FormGroup>
+                    <FormControlLabel
+                      control={
+                        <Checkbox checked={smartParking} sx={{color:"white"}} onChange={()=>{setSmartParking(!smartParking)}} name="smartparking" />
+                      }
+                      label="Parkomat"
+                    />
+                  </FormGroup>
+                  {smartParking &&
+                    <FormHelperText sx={{color:"white"}}>
+                      Также будет создана отдельная заявка для Parkomat. 
+                      После одобрения оператором номер автоматически попадёт в систему Parkomat.
+                    </FormHelperText>
+                  }
+                </FormControl>
+              </div>
               
               <form onSubmit={handleSubmit} className={styles.form}>
                 {/* Номер договора */}
@@ -246,17 +272,18 @@ const handleSubmit = async (e: React.FormEvent) => {
                     Гос. номер машины <span className={styles.required}>*</span>
                   </label>
                   <input
-                    type="text"
-                    id="plateNumber"
-                    name="plateNumber"
-                    value={formData.plateNumber}
-                    onChange={handleChange}
-                    className={styles.input}
-                    placeholder="123ABC01"
-                    maxLength={20}
-                    disabled={submitting}
-                    required
-                  />
+  type="text"
+  id="plateNumber"
+  name="plateNumber"
+  value={formData.plateNumber}
+  onChange={handleChange}
+  className={styles.input}
+  placeholder="123ABC01"
+  maxLength={20}
+  disabled={submitting}
+  required
+  style={{ textTransform: 'uppercase' }}
+/>
                   <p className={styles.help}>Пример: 123ABC01 или A123BC</p>
                 </div>
 
@@ -340,23 +367,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
 
                 {/* Срок действия */}
-                {/* <div className={styles.row}>
-                  <div className={styles.formGroup}>
-                    <label htmlFor="validFrom" className={styles.label}>
-                      Действует с
-                    </label>
-                    <input
-                      type="date"
-                      id="validFrom"
-                      name="validFrom"
-                      value={formData.validFrom}
-                      onChange={handleChange}
-                      className={styles.input}
-                      disabled={submitting}
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-
+                <div className={styles.row}>
                   <div className={styles.formGroup}>
                     <label htmlFor="validUntil" className={styles.label}>
                       Действует до
@@ -369,10 +380,15 @@ const handleSubmit = async (e: React.FormEvent) => {
                       onChange={handleChange}
                       className={styles.input}
                       disabled={submitting}
-                      min={formData.validFrom || new Date().toISOString().split('T')[0]}
+                      min={new Date().toISOString().split('T')[0]}
+                      max={getMaxDate()}
                     />
+                    <p className={styles.help}>
+                      Выберите дату, до которой номер будет активен. После истечения срока номер автоматически деактивируется. По умолчанию — до конца года.
+                      
+                    </p>
                   </div>
-                </div> */}
+                </div>
 
                 {/* Примечания */}
                 <div className={styles.formGroup}>
@@ -405,7 +421,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                   ) : (
                     <>
                       <i className="ri-send-plane-line"></i>
-                      <span>Отправить заявку</span>
+                      <span>
+                        {smartParking ? 'Отправить заявки' : 'Отправить заявку'}
+                      </span>
                     </>
                   )}
                 </button>
@@ -423,12 +441,24 @@ const handleSubmit = async (e: React.FormEvent) => {
 
               {applications && applications?.length > 0 ? (
                 <div className={styles.applicationsList}>
-                  {applications.map((app) => {
+                  {applications.filter(app => app.destination !== "smartparking").map((app) => {
                     const status = getStatusBadge(app.status);
+                    const destination = getDestinationBadge(app.destination);
                     return (
                       <div key={app.id} className={styles.applicationItem}>
                         <div className={styles.applicationHeader}>
-                          <span className={styles.plateNumber}>{app.plateNumber}</span>
+                          <div className={styles.plateRow}>
+                            <span className={styles.plateNumber}>{app.plateNumber}</span>
+                            <span 
+                              className={styles.destinationBadge}
+                              style={{ 
+                                backgroundColor: destination.color === 'blue' ? '#dbeafe' : '#d1fae5',
+                                color: destination.color === 'blue' ? '#2563eb' : '#059669'
+                              }}
+                            >
+                              {destination.text}
+                            </span>
+                          </div>
                           <span className={`${styles.statusBadge} ${styles[`status${status.color}`]}`}>
                             {status.text}
                           </span>

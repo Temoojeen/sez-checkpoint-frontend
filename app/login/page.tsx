@@ -8,6 +8,7 @@ import img from "../../public/assets/images/test.png";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 
+
 const LoginPage = () => {
   const { login, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
@@ -140,7 +141,13 @@ const LoginPage = () => {
             <div className={styles.login__header}>
               <div className={styles.login__badge}>
                 <span>
-                  <img src="/assets/images/logo.png" className={styles.logo_img} alt=''/>
+                  <Image
+  src="/assets/images/logo.png"
+  alt="Logo" // Provide a meaningful alt text for accessibility
+  className={styles.logo_img}
+  width={100} // Required: specify the image width in pixels
+  height={100} // Required: specify the image height in pixels
+/>
                 </span>
               </div>
               <h2 className={styles.login__title}>

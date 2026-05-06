@@ -33,4 +33,5 @@ class ContractService {
   }
 }
 
-export default new ContractService();
+const contractService = new ContractService();
+export default contractService;

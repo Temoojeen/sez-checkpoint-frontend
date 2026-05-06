@@ -9,14 +9,13 @@ import approvedPlateService from '@/services/approved-plate.service';
 import organizationService from '@/services/organization.service';
 import accessListService from '@/services/access-list.service';
 import { ApprovedPlate, Organization, AccessList, ApiError } from '@/types';
-import { formatDate } from '@/utils/format';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function EditApprovedPlatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,10 +45,11 @@ export default function EditApprovedPlatePage({ params }: { params: Promise<{ id
 
   // Загрузка данных
   useEffect(() => {
-    if (currentUser?.roleId === 1) {
-      fetchData();
-    }
-  }, [currentUser, id]);
+  if (currentUser?.roleId === 1) {
+    fetchData();
+  }
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [currentUser, id]);
 
   const fetchData = async () => {
     try {
@@ -179,9 +179,6 @@ export default function EditApprovedPlatePage({ params }: { params: Promise<{ id
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (

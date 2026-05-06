@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import userService from '@/services/user.service';
 import organizationService from '@/services/organization.service';
@@ -13,7 +12,6 @@ import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function NewUserPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -59,7 +57,7 @@ export default function NewUserPage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Если роль меняется на не-участника и не-оператора, сбрасываем выбранные списки
+    // Если роль меняется на ту, которой не нужны списки, сбрасываем выбранные списки
     if (name === 'roleId' && value !== '4' && value !== '2') {
       setSelectedLists([]);
     }
@@ -137,7 +135,7 @@ export default function NewUserPage() {
         roleId: parseInt(formData.roleId),
       });
       
-      // Если это участник или оператор и выбраны списки, добавляем разрешения
+      // Если это участник или оператор КПП 1 и выбраны списки, добавляем разрешения
       if ((formData.roleId === '4' || formData.roleId === '2') && selectedLists.length > 0) {
         try {
           for (const listId of selectedLists) {
@@ -172,36 +170,39 @@ export default function NewUserPage() {
     }
   };
 
-  const getRoleName = (roleId: string) => {
-    switch (parseInt(roleId)) {
-      case 1: return 'Администратор';
-      case 2: return 'Оператор';
-      case 3: return 'Руководитель';
-      case 4: return 'Участник';
-      case 5: return 'Охрана';
-      default: return 'Неизвестно';
-    }
-  };
+  // const getRoleName = (roleId: string) => {
+  //   switch (parseInt(roleId)) {
+  //     case 1: return 'Администратор';
+  //     case 2: return 'Оператор КПП 1';
+  //     case 3: return 'Руководитель';
+  //     case 4: return 'Участник';
+  //     case 5: return 'Охрана';
+  //     case 6: return 'Оператор SmartParking';
+  //     default: return 'Неизвестно';
+  //   }
+  // };
 
-  // Показываем выбор списков для участника (4) и оператора (2)
+  // const getRoleDescription = (roleId: string) => {
+  //   switch (parseInt(roleId)) {
+  //     case 1: return 'Полный доступ ко всем функциям системы';
+  //     case 2: return 'Обработка заявок на КПП 1, просмотр назначенных списков';
+  //     case 3: return 'Финальное утверждение заявок после оператора';
+  //     case 4: return 'Подача заявок на пропуск (требуется организация и списки)';
+  //     case 5: return 'Просмотр списков пропусков и истории проездов';
+  //     case 6: return 'Обработка заявок на SmartParking, интеграция с Parqour';
+  //     default: return '';
+  //   }
+  // };
+
+  // Показываем выбор списков для участника (4) и оператора КПП 1 (2)
   const showListSelection = formData.roleId === '4' || formData.roleId === '2';
+
+  // Показываем выбор организации только для участника (4)
+  const showOrganizationSelection = formData.roleId === '4';
 
   return (
     <div className={styles.container}>
       <Header role='admin'/>
-      {/* Заголовок */}
-      {/* <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Новый пользователь</h1>
-            <p className={styles.subtitle}>Создание нового пользователя системы</p>
-          </div>
-          <Link href="/admin/users" className={styles.backButton}>
-            <i className="ri-arrow-left-line"></i>
-            <span>Назад к списку</span>
-          </Link>
-        </div>
-      </div> */}
 
       {/* Форма */}
       <div className={styles.main}>
@@ -278,18 +279,19 @@ export default function NewUserPage() {
                 required
               >
                 <option value="1">Администратор</option>
-                <option value="2">Оператор</option>
+                <option value="2">Оператор КПП 1</option>
+                <option value="6">Оператор SmartParking</option>
                 <option value="3">Руководитель</option>
                 <option value="4">Участник</option>
                 <option value="5">Охрана</option>
               </select>
-              <p className={styles.help}>
-                Выбрана роль: {getRoleName(formData.roleId)}
-              </p>
+              {/* <p className={styles.roleDescription}>
+                {getRoleDescription(formData.roleId)}
+              </p> */}
             </div>
 
             {/* Организация (только для участника) */}
-            {formData.roleId === '4' && (
+            {showOrganizationSelection && (
               <div className={styles.formGroup}>
                 <label htmlFor="organizationId" className={styles.label}>
                   Организация <span className={styles.required}>*</span>
@@ -300,17 +302,17 @@ export default function NewUserPage() {
                   value={formData.organizationId}
                   onChange={handleChange}
                   className={styles.select}
-                  disabled={loading || organizations.length === 0}
+                  disabled={loading || organizations?.length === 0}
                   required
                 >
                   <option value="">Выберите организацию</option>
-                  {organizations.map((org) => (
+                  {organizations?.map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.name} ({org.bin})
                     </option>
                   ))}
                 </select>
-                {organizations.length === 0 && (
+                {organizations?.length === 0 && (
                   <p className={styles.error}>
                     Нет доступных организаций. 
                     <Link href="/admin/organizations/new" className={styles.errorLink}>
@@ -321,8 +323,8 @@ export default function NewUserPage() {
               </div>
             )}
 
-            {/* Списки доступа (для участника и оператора) */}
-            {showListSelection && accessLists.length > 0 && (
+            {/* Списки доступа (для участника и оператора КПП 1) */}
+            {showListSelection && accessLists?.length > 0 && (
               <div className={styles.formGroup}>
                 <div className={styles.listsHeader}>
                   <label className={styles.label}>
@@ -373,6 +375,22 @@ export default function NewUserPage() {
               </div>
             )}
 
+            {/* Информация для оператора SmartParking */}
+            {/* {formData.roleId === '6' && (
+              <div className={styles.infoBox} style={{ backgroundColor: '#d1fae5', borderColor: '#059669' }}>
+                <i className="ri-parking-box-line" style={{ color: '#059669' }}></i>
+                <div className={styles.infoContent}>
+                  <p className={styles.infoTitle}>Оператор SmartParking:</p>
+                  <ul className={styles.infoList}>
+                    <li>Видит только заявки с пометкой SmartParking</li>
+                    <li>При одобрении номер автоматически отправляется в систему Parqour</li>
+                    <li>Не требует утверждения руководителем</li>
+                    <li>Не требует привязки к организации или спискам</li>
+                  </ul>
+                </div>
+              </div>
+            )} */}
+
             {/* Email (для всех ролей) */}
             <div className={styles.formGroup}>
               <label htmlFor="email" className={styles.label}>
@@ -414,8 +432,9 @@ export default function NewUserPage() {
                 <p className={styles.infoTitle}>О ролях:</p>
                 <ul className={styles.infoList}>
                   <li><strong>Администратор</strong> - полный доступ к системе</li>
-                  <li><strong>Оператор</strong> - обработка заявок и просмотр выбранных списков</li>
-                  <li><strong>Руководитель</strong> - финальное утверждение</li>
+                  <li><strong>Оператор КПП 1</strong> - обработка заявок на КПП 1 и просмотр выбранных списков</li>
+                  <li><strong>Оператор SmartParking</strong> - обработка заявок на SmartParking, интеграция с Parqour</li>
+                  <li><strong>Руководитель</strong> - финальное утверждение заявок КПП 1</li>
                   <li><strong>Участник</strong> - подача заявок (требуется организация и списки)</li>
                   <li><strong>Охрана</strong> - просмотр списков и истории</li>
                 </ul>

@@ -31,7 +31,9 @@ export interface CheckPlateResponse {
   organizationName?: string;
   listName?: string;
   listType?: string;
+  listColor?: string;
   validUntil?: string;
+  isActive?: boolean;
   message?: string;
 }
 
@@ -91,25 +93,35 @@ class ApprovedPlateService {
     }
   }
 
-// Полное удаление номера (удаление из базы)
-async delete(id: string): Promise<void> {
-  try {
-    await api.delete(`/admin/approved-plates/${id}`);
-  } catch (error) {
-    console.error('Error in delete:', error);
-    throw error;
+  // Удаление номера с указанием причины (для участника)
+  async delete(id: string, reason?: string): Promise<void> {
+    try {
+      await api.delete(`/approved-plates/${id}`, { data: { reason } });
+    } catch (error) {
+      console.error('Error in delete:', error);
+      throw error;
+    }
   }
-}
 
-// Мягкое удаление (деактивация) - если нужно
-async deactivate(id: string): Promise<void> {
-  try {
-    await api.put(`/admin/approved-plates/${id}/deactivate`);
-  } catch (error) {
-    console.error('Error in deactivate:', error);
-    throw error;
+  // Полное удаление номера (только для админа)
+  async hardDelete(id: string): Promise<void> {
+    try {
+      await api.delete(`/admin/approved-plates/${id}`);
+    } catch (error) {
+      console.error('Error in hardDelete:', error);
+      throw error;
+    }
   }
-}
+
+  // Мягкое удаление (деактивация)
+  async deactivate(id: string): Promise<void> {
+    try {
+      await api.put(`/admin/approved-plates/${id}/deactivate`);
+    } catch (error) {
+      console.error('Error in deactivate:', error);
+      throw error;
+    }
+  }
 
   // Проверка номера (для охраны)
   async checkPlate(plateNumber: string): Promise<CheckPlateResponse> {

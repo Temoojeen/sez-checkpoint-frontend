@@ -168,17 +168,17 @@ export default function NewContractPage() {
                 value={formData.organizationId}
                 onChange={handleChange}
                 className={styles.select}
-                disabled={loading || organizations.length === 0}
+                disabled={loading || organizations?.length === 0}
                 required
               >
                 <option value="">Выберите организацию</option>
-                {organizations.map((org) => (
+                {organizations?.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.name} ({org.bin})
                   </option>
                 ))}
               </select>
-              {organizations.length === 0 && (
+              {organizations?.length === 0 && (
                 <p className={styles.error}>
                   Нет доступных организаций. 
                   <Link href="/admin/organizations/new" className={styles.errorLink}>
@@ -312,7 +312,7 @@ export default function NewContractPage() {
               <button
                 type="submit"
                 className={styles.submitButton}
-                disabled={loading || organizations.length === 0}
+                disabled={loading || organizations?.length === 0}
               >
                 {loading ? (
                   <>

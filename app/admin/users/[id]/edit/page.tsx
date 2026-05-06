@@ -8,7 +8,6 @@ import { toast } from 'react-hot-toast';
 import userService from '@/services/user.service';
 import organizationService from '@/services/organization.service';
 import { User, Organization, ApiError } from '@/types';
-import { getRoleName, getRoleColor } from '@/utils/roleRedirect';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
@@ -16,7 +15,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
   // Разворачиваем Promise с помощью React.use()
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,6 +58,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
       fetchUserData();
       fetchOrganizations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, id]);
 
   const fetchOrganizations = async () => {
@@ -228,9 +228,6 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (
@@ -256,8 +253,6 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     );
   }
 
-  const roleColor = getRoleColor(user.roleId);
-  const roleName = getRoleName(user.roleId);
 
   return (
     <div className={styles.container}>

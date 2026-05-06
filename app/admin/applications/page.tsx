@@ -14,7 +14,7 @@ import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function AdminApplicationsPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -236,8 +236,27 @@ export default function AdminApplicationsPage() {
     return true;
   });
 
-  const handleLogout = () => {
-    logout();
+  const handleDeleteApplication = async (applicationId: string, plateNumber: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить заявку для номера ${plateNumber}? Это действие нельзя отменить.`)) {
+      return;
+    }
+    
+    try {
+      setProcessingId(applicationId);
+      await applicationService.adminDeleteApplication(applicationId);
+      toast.success('Заявка удалена');
+      await fetchData();
+    } catch (error: unknown) {
+      console.error('Error deleting application:', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as ApiError;
+        toast.error(apiError.response?.data?.error || 'Ошибка при удалении');
+      } else {
+        toast.error('Ошибка при удалении');
+      }
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   if (loading) {
@@ -253,29 +272,6 @@ export default function AdminApplicationsPage() {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Управление заявками</h1>
-            <p className={styles.subtitle}>
-              Просмотр и управление всеми заявками системы
-            </p>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge} style={{ backgroundColor: '#8b5cf620', color: '#8b5cf6' }}>
-              Администратор
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
       <Header role='admin'/>
 
       <main className={styles.main}>
@@ -448,6 +444,7 @@ export default function AdminApplicationsPage() {
                   <th>Договор</th>
                   <th>Дата создания</th>
                   <th>Срок до</th>
+                  <th>Направление</th>
                   <th>Действия</th>
                 </tr>
               </thead>
@@ -510,75 +507,108 @@ export default function AdminApplicationsPage() {
                       <td>
                         {app.validUntil ? formatDate(app.validUntil) : '—'}
                       </td>
+                       {/* ИСПРАВЛЕННАЯ ЯЧЕЙКА - убран div внутри td */}
                       <td>
-                        <div className={styles.actionButtons}>
-                          {app.status === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => handleApproveAsOperator(app.id)}
-                                disabled={processingId === app.id}
-                                className={`${styles.actionButton} ${styles.approveButton}`}
-                                title="Одобрить (как оператор)"
-                              >
-                                {processingId === app.id ? (
-                                  <i className="ri-loader-4-line ri-spin"></i>
-                                ) : (
-                                  <i className="ri-user-star-line"></i>
+                        <>
+                          {app.destination == "kpp1" ? "КПП 1" : (app.destination || "-")}
+                          <div className={styles.actionButtons}>
+                            {app.status === 'pending' && (
+                              <>
+                                {app.destination == "kpp1" && (
+                                  <button
+                                    onClick={() => handleApproveAsOperator(app.id)}
+                                    disabled={processingId === app.id}
+                                    className={`${styles.actionButton} ${styles.approveButton}`}
+                                    title="Одобрить (как оператор)"
+                                  >
+                                    {processingId === app.id ? (
+                                      <i className="ri-loader-4-line ri-spin"></i>
+                                    ) : (
+                                      <i className="ri-user-star-line"></i>
+                                    )}
+                                  </button>
                                 )}
-                              </button>
+                                <button
+                                  onClick={() => openRejectModal(app.id, app.plateNumber)}
+                                  disabled={processingId === app.id}
+                                  className={`${styles.actionButton} ${styles.rejectButton}`}
+                                  title="Отклонить"
+                                >
+                                  <i className="ri-close-line"></i>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteApplication(app.id, app.plateNumber)}
+                                  disabled={processingId === app.id}
+                                  className={`${styles.actionButton} ${styles.deleteButton}`}
+                                  title="Удалить заявку"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                </button>
+                              </>
+                            )}
+                            
+                            {app.status === 'operator_approved' && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveAsSupervisor(app.id)}
+                                  disabled={processingId === app.id}
+                                  className={`${styles.actionButton} ${styles.approveButton}`}
+                                  title="Утвердить (как руководитель)"
+                                >
+                                  {processingId === app.id ? (
+                                    <i className="ri-loader-4-line ri-spin"></i>
+                                  ) : (
+                                    <i className="ri-check-double-line"></i>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => openRejectModal(app.id, app.plateNumber)}
+                                  disabled={processingId === app.id}
+                                  className={`${styles.actionButton} ${styles.rejectButton}`}
+                                  title="Отклонить"
+                                >
+                                  <i className="ri-close-line"></i>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteApplication(app.id, app.plateNumber)}
+                                  disabled={processingId === app.id}
+                                  className={`${styles.actionButton} ${styles.deleteButton}`}
+                                  title="Удалить заявку"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                </button>
+                              </>
+                            )}
+
+                            {app.status !== 'pending' && app.status !== 'operator_approved' && (
                               <button
-                                onClick={() => openRejectModal(app.id, app.plateNumber)}
+                                onClick={() => handleDeleteApplication(app.id, app.plateNumber)}
                                 disabled={processingId === app.id}
-                                className={`${styles.actionButton} ${styles.rejectButton}`}
-                                title="Отклонить"
+                                className={`${styles.actionButton} ${styles.deleteButton}`}
+                                title="Удалить заявку"
                               >
-                                <i className="ri-close-line"></i>
+                                <i className="ri-delete-bin-line"></i>
                               </button>
-                            </>
-                          )}
-                          
-                          {app.status === 'operator_approved' && (
-                            <>
-                              <button
-                                onClick={() => handleApproveAsSupervisor(app.id)}
-                                disabled={processingId === app.id}
-                                className={`${styles.actionButton} ${styles.approveButton}`}
-                                title="Утвердить (как руководитель)"
-                              >
-                                {processingId === app.id ? (
-                                  <i className="ri-loader-4-line ri-spin"></i>
-                                ) : (
-                                  <i className="ri-check-double-line"></i>
-                                )}
-                              </button>
-                              <button
-                                onClick={() => openRejectModal(app.id, app.plateNumber)}
-                                disabled={processingId === app.id}
-                                className={`${styles.actionButton} ${styles.rejectButton}`}
-                                title="Отклонить"
-                              >
-                                <i className="ri-close-line"></i>
-                              </button>
-                            </>
-                          )}
-                          
-                          <Link
-                            href={`/admin/applications/${app.id}`}
-                            className={`${styles.actionButton} ${styles.viewButton}`}
-                            title="Просмотр"
-                          >
-                            <i className="ri-eye-line"></i>
-                          </Link>
-                          
-                          {app.rejectReason && app.status === 'rejected' && (
-                            <span 
-                              className={styles.rejectIcon} 
-                              title={app.rejectReason}
+                            )}
+                            
+                            <Link
+                              href={`/admin/applications/${app.id}`}
+                              className={`${styles.actionButton} ${styles.viewButton}`}
+                              title="Просмотр"
                             >
-                              <i className="ri-error-warning-line"></i>
-                            </span>
-                          )}
-                        </div>
+                              <i className="ri-eye-line"></i>
+                            </Link>
+                            
+                            {app.rejectReason && app.status === 'rejected' && (
+                              <span 
+                                className={styles.rejectIcon} 
+                                title={app.rejectReason}
+                              >
+                                <i className="ri-error-warning-line"></i>
+                              </span>
+                            )}
+                          </div>
+                        </>
                       </td>
                     </tr>
                   );

@@ -17,7 +17,7 @@ import Header from '@/components/Header/Header';
 export default function ApprovedPlateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [plate, setPlate] = useState<ApprovedPlate | null>(null);
@@ -49,6 +49,7 @@ export default function ApprovedPlateDetailPage({ params }: { params: Promise<{ 
     if (currentUser?.roleId === 1) {
       fetchPlateData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, id]);
 
   const fetchPlateData = async () => {
@@ -210,9 +211,6 @@ export default function ApprovedPlateDetailPage({ params }: { params: Promise<{ 
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (

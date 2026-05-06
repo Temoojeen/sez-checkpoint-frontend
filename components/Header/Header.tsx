@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import styles from './Header.module.css';
 import { useAuth } from '@/hooks/useAuth';
+import Image from 'next/image';
 interface HeaderProps {
   role: string;
 }
@@ -72,7 +73,13 @@ const Header: React.FC<HeaderProps> = ({ role }) => {
         {/* Logo */}
         <div className={styles.logo}>
           <Link href="/" className={styles.logoText}>
-            <img className={styles.logo_img} src='/assets/images/logo.png' alt="Logo" />
+            <Image
+  src="/assets/images/logo.png"
+  alt="Logo" // Provide a meaningful alt text for accessibility
+  className={styles.logo_img}
+  width={100} // Required: specify the image width in pixels
+  height={100} // Required: specify the image height in pixels
+/>
           </Link>
         </div>
 

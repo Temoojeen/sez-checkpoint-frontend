@@ -17,7 +17,7 @@ import Header from '@/components/Header/Header';
 export default function ContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [contract, setContract] = useState<Contract | null>(null);
@@ -48,6 +48,7 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
     if (currentUser?.roleId === 1) {
       fetchContractData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, id]);
 
   const fetchContractData = async () => {
@@ -193,10 +194,6 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
         }
       }
     }
-  };
-
-  const handleLogout = () => {
-    logout();
   };
 
   const getStatusInfo = (status: string) => {

@@ -56,28 +56,27 @@ export interface Application {
   vehicleBrand?: string;
   vehicleModel?: string;
   vehicleColor?: string;
-  contractNumber?: string;
   contractId?: string;
+  contractNumber?: string;
   organizationId?: string;
   organizationName?: string;
   listId: string;
   listName?: string;
-  status: 'pending' | 'operator_approved' | 'supervisor_approved' | 'rejected';
-  createdAt: string;
-  updatedAt?: string;
-  applicantId?: string;
+  applicantId: string;
   applicantName?: string;
-  operatorId?: string;           // Добавляем
-  operatorName?: string;          // Добавляем
-  supervisorId?: string;          // Добавляем
-  supervisorName?: string;        // Добавляем
-  operatorApprovedAt?: string;    // Добавляем
-  supervisorApprovedAt?: string;  // Добавляем
-  rejectedAt?: string;            // Добавляем
+  status: 'pending' | 'operator_approved' | 'supervisor_approved' | 'rejected';
+  destination: 'kpp1' | 'smartparking'; // Добавлено
+  operatorId?: string;
+  supervisorId?: string;
+  operatorApprovedAt?: string;
+  supervisorApprovedAt?: string;
+  rejectedAt?: string;
   rejectReason?: string;
   validFrom?: string;
   validUntil?: string;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AccessList {
@@ -159,7 +158,18 @@ export interface CreateUserData {
   organizationId?: string | null;
   roleId: number;
 }
-
+export interface CreateApplicationRequest {
+  plateNumber: string;
+  vehicleBrand?: string;
+  vehicleModel?: string;
+  vehicleColor?: string;
+  contractNumber: string;
+  listId: string;
+  validFrom?: string;
+  validUntil?: string;
+  notes?: string;
+  smartParking?: boolean; // Добавлено
+}
 export interface CreateOrganizationData {
   name: string;
   bin: string;

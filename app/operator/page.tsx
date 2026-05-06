@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import applicationService from '@/services/application.service';
@@ -12,10 +11,11 @@ import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function OperatorPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false); // для массовой операции
   const [applications, setApplications] = useState<Application[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [stats, setStats] = useState({
@@ -49,6 +49,7 @@ export default function OperatorPage() {
     if (user && user.roleId === 2 && !dataLoaded) {
       fetchApplications();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataLoaded]);
 
   const fetchApplications = useCallback(async () => {
@@ -74,12 +75,61 @@ export default function OperatorPage() {
     } catch (error) {
       console.error('Error fetching applications:', error);
       toast.error('Ошибка при загрузке заявок');
-      // В случае ошибки устанавливаем пустой массив
       setApplications([]);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Подтвердить все заявки
+  const handleApproveAll = async () => {
+    if (applications.length === 0) {
+      toast.error('Нет заявок для подтверждения');
+      return;
+    }
+
+    const confirmed = confirm(
+      `Вы уверены, что хотите подтвердить все ${applications.length} заявок?\n` +
+      `Это действие отправит их на утверждение руководителю.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      setBulkProcessing(true);
+      let successCount = 0;
+      let failCount = 0;
+
+      // Последовательно обрабатываем все заявки
+      for (const app of applications) {
+        try {
+          await applicationService.operatorApprove(app.id);
+          successCount++;
+          // Небольшая задержка между запросами, чтобы не перегружать сервер
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`Failed to approve ${app.id}:`, error);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Подтверждено ${successCount} заявок${failCount > 0 ? `, ${failCount} не удалось` : ''}`);
+      }
+      if (failCount > 0) {
+        toast.error(`Не удалось подтвердить ${failCount} заявок`);
+      }
+      
+      // Обновляем список
+      await fetchApplications();
+      
+    } catch (error) {
+      console.error('Error in bulk approve:', error);
+      toast.error('Ошибка при массовом подтверждении');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
 
   const handleApprove = async (applicationId: string) => {
     try {
@@ -89,7 +139,6 @@ export default function OperatorPage() {
       
       toast.success('Заявка одобрена и отправлена руководителю');
       
-      // Обновляем список и убеждаемся, что получаем массив
       await fetchApplications();
       
     } catch (error: unknown) {
@@ -164,9 +213,6 @@ export default function OperatorPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (
@@ -181,33 +227,6 @@ export default function OperatorPage() {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-  <div>
-    <h1 className={styles.title}>Панель оператора</h1>
-    <p className={styles.subtitle}>
-      Добро пожаловать, {user?.fullName || user?.username}
-    </p>
-  </div>
-  <div className={styles.userInfo}>
-    <Link href="/operator/lists" className={styles.viewPlatesLink}>
-      <i className="ri-car-line"></i>
-      <span>Утвержденные номера</span>
-    </Link>
-    <span className={styles.roleBadge}>
-      Оператор
-    </span>
-    <button
-      onClick={handleLogout}
-      className={styles.logoutButton}
-    >
-      <i className="ri-logout-box-line"></i>
-      <span>Выйти</span>
-    </button>
-  </div>
-</div>
-      </header> */}
       <Header role='operator'/>
 
       <main className={styles.main}>
@@ -261,14 +280,37 @@ export default function OperatorPage() {
               <i className="ri-file-list-3-line"></i>
               Заявки на рассмотрение
             </h2>
-            <button
-              onClick={fetchApplications}
-              className={styles.refreshButton}
-              disabled={loading}
-            >
-              <i className={`ri-refresh-line ${loading ? 'ri-spin' : ''}`}></i>
-              <span>Обновить</span>
-            </button>
+            <div className={styles.headerButtons}>
+              <button
+                onClick={fetchApplications}
+                className={styles.refreshButton}
+                disabled={loading}
+              >
+                <i className={`ri-refresh-line ${loading ? 'ri-spin' : ''}`}></i>
+                <span>Обновить</span>
+              </button>
+              
+              {/* Кнопка "Подтвердить все" */}
+              {applications.length > 0 && (
+                <button
+                  onClick={handleApproveAll}
+                  disabled={bulkProcessing}
+                  className={styles.approveAllButton}
+                >
+                  {bulkProcessing ? (
+                    <>
+                      <i className="ri-loader-4-line ri-spin"></i>
+                      <span>Подтверждение...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-check-double-line"></i>
+                      <span>Одобрить все ({applications.length})</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           {applications?.length > 0 ? (
@@ -333,7 +375,7 @@ export default function OperatorPage() {
                     <div className={styles.applicationActions}>
                       <button
                         onClick={() => handleApprove(app.id)}
-                        disabled={processing === app.id}
+                        disabled={processing === app.id || bulkProcessing}
                         className={`${styles.actionButton} ${styles.approveButton}`}
                       >
                         {processing === app.id ? (
@@ -348,7 +390,7 @@ export default function OperatorPage() {
                       
                       <button
                         onClick={() => openRejectModal(app.id, app.plateNumber)}
-                        disabled={processing === app.id}
+                        disabled={processing === app.id || bulkProcessing}
                         className={`${styles.actionButton} ${styles.rejectButton}`}
                       >
                         <i className="ri-close-line"></i>

@@ -14,7 +14,7 @@ import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function UsersPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
@@ -133,9 +133,6 @@ export default function UsersPage() {
     return true;
   });
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (

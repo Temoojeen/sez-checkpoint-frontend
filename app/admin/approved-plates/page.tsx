@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import approvedPlateService from '@/services/approved-plate.service';
@@ -14,7 +13,7 @@ import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function AdminApprovedPlatesPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [plates, setPlates] = useState<ApprovedPlate[]>([]);
@@ -53,6 +52,7 @@ export default function AdminApprovedPlatesPage() {
     if (user && user.roleId === 1 && !dataLoaded) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataLoaded]);
 
   const fetchData = useCallback(async () => {
@@ -132,10 +132,16 @@ export default function AdminApprovedPlatesPage() {
     setEditingPlate(null);
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+ const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const { name, value } = e.target;
+  
+  // Автоматически приводим номер к верхнему регистру
+  if (name === 'plateNumber') {
+    setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+  } else {
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,9 +271,6 @@ export default function AdminApprovedPlatesPage() {
     return organizations.find(o => o.id === orgId)?.name || 'Неизвестная организация';
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (
@@ -396,7 +399,6 @@ export default function AdminApprovedPlatesPage() {
               <tbody>
                 {filteredPlates.map((plate) => {
                   const listColor = getListColor(plate.listId);
-                  const isActive = plate.isActive && (!plate.validUntil || new Date(plate.validUntil) >= new Date());
                   
                   return (
                     <tr key={plate.id} className={!plate.isActive ? styles.inactiveRow : ''}>
@@ -492,15 +494,16 @@ export default function AdminApprovedPlatesPage() {
                   Государственный номер <span className={styles.required}>*</span>
                 </label>
                 <input
-                  type="text"
-                  id="plateNumber"
-                  name="plateNumber"
-                  value={formData.plateNumber}
-                  onChange={handleFormChange}
-                  className={styles.input}
-                  placeholder="123ABC01"
-                  required
-                />
+  type="text"
+  id="plateNumber"
+  name="plateNumber"
+  value={formData.plateNumber}
+  onChange={handleFormChange}
+  className={styles.input}
+  placeholder="123ABC01"
+  required
+  style={{ textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '1px' }}
+/>
               </div>
 
               <div className={styles.formRow}>

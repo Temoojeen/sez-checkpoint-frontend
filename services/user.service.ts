@@ -1,5 +1,24 @@
 import api from './api';
-import { User, CreateUserData, UpdateUserData, AccessList } from '@/types';
+import { User, AccessList } from '@/types';
+
+export interface CreateUserData {
+  username: string;
+  password: string;
+  fullName: string;
+  email?: string;
+  phone?: string;
+  organizationId?: string;
+  roleId: number;
+}
+
+export interface UpdateUserData {
+  fullName?: string;
+  email?: string | null;
+  phone?: string | null;
+  organizationId?: string | null;
+  roleId?: number;
+  isActive?: boolean;
+}
 
 class UserService {
   async getAll(): Promise<User[]> {
@@ -13,12 +32,41 @@ class UserService {
   }
 
   async create(data: CreateUserData): Promise<User> {
-    const response = await api.post<User>('/admin/users', data);
+    const payload: CreateUserData = {
+      username: data.username,
+      password: data.password,
+      fullName: data.fullName,
+      roleId: Number(data.roleId),
+    };
+
+    if (data.email && data.email.trim() !== '') {
+      payload.email = data.email.trim();
+    }
+    if (data.phone && data.phone.trim() !== '') {
+      payload.phone = data.phone.trim();
+    }
+    if (data.organizationId && data.organizationId.trim() !== '') {
+      payload.organizationId = data.organizationId;
+    }
+
+    console.log('📤 Creating user with payload:', payload);
+    const response = await api.post<User>('/admin/users', payload);
     return response.data;
   }
 
   async update(id: string, data: UpdateUserData): Promise<User> {
-    const response = await api.put<User>(`/admin/users/${id}`, data);
+    // Собираем только те поля, которые переданы
+    const payload: Record<string, unknown> = {};
+
+    if (data.fullName !== undefined) payload.fullName = data.fullName;
+    if (data.email !== undefined) payload.email = data.email;
+    if (data.phone !== undefined) payload.phone = data.phone;
+    if (data.organizationId !== undefined) payload.organizationId = data.organizationId;
+    if (data.roleId !== undefined) payload.roleId = Number(data.roleId);
+    if (data.isActive !== undefined) payload.isActive = data.isActive;
+
+    console.log('📤 Updating user with payload:', payload);
+    const response = await api.put<User>(`/admin/users/${id}`, payload);
     return response.data;
   }
 
@@ -37,15 +85,24 @@ class UserService {
 
   async getAvailableLists(): Promise<AccessList[]> {
     try {
-      const response = await api.get<AccessList[]>('/access-lists');
-      // Если ответ успешный, но данные пустые, возвращаем пустой массив
+      const response = await api.get<AccessList[]>('/user/list-permissions');
       return response.data || [];
     } catch (error) {
       console.error('Error fetching available lists:', error);
-      // В случае ошибки возвращаем пустой массив, чтобы не ломать интерфейс
+      return [];
+    }
+  }
+
+  async getMyListPermissions(): Promise<AccessList[]> {
+    try {
+      const response = await api.get<AccessList[]>('/user/list-permissions');
+      return response.data || [];
+    } catch (error) {
+      console.error('Error fetching list permissions:', error);
       return [];
     }
   }
 }
 
-export default new UserService();
+const userService = new UserService();
+export default userService;

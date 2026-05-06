@@ -18,7 +18,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   // Разворачиваем Promise с помощью React.use()
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -51,6 +51,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       fetchUserData();
       fetchOrganizations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, id]);
 
   const fetchOrganizations = async () => {
@@ -227,9 +228,6 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (

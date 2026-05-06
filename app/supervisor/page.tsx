@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import applicationService from '@/services/application.service';
@@ -12,10 +11,11 @@ import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function SupervisorPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false); // для массовой операции
   const [applications, setApplications] = useState<Application[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [stats, setStats] = useState({
@@ -38,6 +38,7 @@ export default function SupervisorPage() {
     if (user && user.roleId === 3 && !dataLoaded) {
       fetchApplications();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataLoaded]);
 
   const fetchApplications = useCallback(async () => {
@@ -55,8 +56,8 @@ export default function SupervisorPage() {
       setStats({
         total: safeApplications.length,
         pending: safeApplications.length,
-        approved: 0, // Будет обновляться после утверждения
-        rejected: 0, // Будет обновляться после отклонения
+        approved: 0,
+        rejected: 0,
       });
       
       setDataLoaded(true);
@@ -68,6 +69,66 @@ export default function SupervisorPage() {
       setLoading(false);
     }
   }, []);
+
+// Утвердить все заявки
+const handleApproveAll = async () => {
+  if (applications.length === 0) {
+    toast.error('Нет заявок для утверждения');
+    return;
+  }
+
+  const confirmed = confirm(
+    `Вы уверены, что хотите утвердить все ${applications.length} заявок?\n` +
+    `Это действие добавит номера в списки пропусков.`
+  );
+  
+  if (!confirmed) return;
+
+  try {
+    setBulkProcessing(true);
+    let successCount = 0;
+    let failCount = 0;
+    const failedPlates: string[] = [];
+
+    // Последовательно обрабатываем все заявки
+    for (const app of applications) {
+      try {
+        await applicationService.supervisorApprove(app.id);
+        successCount++;
+        // Небольшая задержка между запросами, чтобы не перегружать сервер
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`Failed to approve ${app.id}:`, error);
+        failCount++;
+        failedPlates.push(app.plateNumber);
+        
+        // Проверяем тип ошибки для показа деталей
+        if (error && typeof error === 'object' && 'response' in error) {
+          const apiError = error as ApiError;
+          if (apiError.response?.data?.error) {
+            console.error(`Error details for ${app.plateNumber}:`, apiError.response.data.error);
+          }
+        }
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Утверждено ${successCount} заявок${failCount > 0 ? `, ${failCount} не удалось` : ''}`);
+    }
+    if (failCount > 0) {
+      toast.error(`Не удалось утвердить ${failCount} заявок: ${failedPlates.join(', ')}`);
+    }
+    
+    // Обновляем список
+    await fetchApplications();
+    
+  } catch (error) {
+    console.error('Error in bulk approve:', error);
+    toast.error('Ошибка при массовом утверждении');
+  } finally {
+    setBulkProcessing(false);
+  }
+};
 
   const handleApprove = async (applicationId: string) => {
     try {
@@ -105,47 +166,54 @@ export default function SupervisorPage() {
     }
   };
 
-  const handleReject = async (applicationId: string) => {
-    try {
-      setProcessing(applicationId);
-      
-      await applicationService.reject(applicationId, {
-        reason: 'Отклонено руководителем',
-      });
-      
-      toast.success('Заявка отклонена');
-      
-      // Обновляем список
-      await fetchApplications();
-      
-      // Обновляем статистику
-      setStats(prev => ({
-        ...prev,
-        rejected: prev.rejected + 1,
-        pending: prev.pending - 1,
-      }));
-      
-    } catch (error: unknown) {
-      console.error('Error rejecting application:', error);
-      
-      if (error && typeof error === 'object' && 'response' in error) {
-        const apiError = error as ApiError;
-        if (apiError.response?.data?.error) {
-          toast.error(apiError.response.data.error);
-        } else {
-          toast.error('Ошибка при отклонении заявки');
-        }
+  const handleReject = async (applicationId: string, plateNumber: string) => {
+  // Запрашиваем причину отклонения
+  const reason = prompt('Укажите причину отклонения заявки:', 'Отклонено руководителем');
+  
+  if (reason === null) return; // пользователь отменил
+  
+  if (!reason.trim()) {
+    toast.error('Укажите причину отклонения');
+    return;
+  }
+
+  try {
+    setProcessing(applicationId);
+    
+    await applicationService.supervisorReject(applicationId, {
+      reason: reason.trim(),
+    });
+    
+    toast.success(`Заявка для номера ${plateNumber} отклонена`);
+    
+    // Обновляем список
+    await fetchApplications();
+    
+    // Обновляем статистику
+    setStats(prev => ({
+      ...prev,
+      rejected: prev.rejected + 1,
+      pending: prev.pending - 1,
+    }));
+    
+  } catch (error: unknown) {
+    console.error('Error rejecting application:', error);
+    
+    if (error && typeof error === 'object' && 'response' in error) {
+      const apiError = error as ApiError;
+      if (apiError.response?.data?.error) {
+        toast.error(apiError.response.data.error);
       } else {
         toast.error('Ошибка при отклонении заявки');
       }
-    } finally {
-      setProcessing(null);
+    } else {
+      toast.error('Ошибка при отклонении заявки');
     }
-  };
+  } finally {
+    setProcessing(null);
+  }
+};
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (
@@ -161,29 +229,6 @@ export default function SupervisorPage() {
   return (
     <div className={styles.container}>
       <Header role='supervisor'/>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Панель руководителя</h1>
-            <p className={styles.subtitle}>
-              Добро пожаловать, {user?.fullName || user?.username}
-            </p>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge}>
-              Руководитель
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
 
       <main className={styles.main}>
         {/* Статистика */}
@@ -236,14 +281,37 @@ export default function SupervisorPage() {
               <i className="ri-file-list-3-line"></i>
               Заявки на утверждение
             </h2>
-            <button
-              onClick={fetchApplications}
-              className={styles.refreshButton}
-              disabled={loading}
-            >
-              <i className={`ri-refresh-line ${loading ? 'ri-spin' : ''}`}></i>
-              <span>Обновить</span>
-            </button>
+            <div className={styles.headerButtons}>
+              <button
+                onClick={fetchApplications}
+                className={styles.refreshButton}
+                disabled={loading}
+              >
+                <i className={`ri-refresh-line ${loading ? 'ri-spin' : ''}`}></i>
+                <span>Обновить</span>
+              </button>
+              
+              {/* Кнопка "Утвердить все" */}
+              {applications.length > 0 && (
+                <button
+                  onClick={handleApproveAll}
+                  disabled={bulkProcessing}
+                  className={styles.approveAllButton}
+                >
+                  {bulkProcessing ? (
+                    <>
+                      <i className="ri-loader-4-line ri-spin"></i>
+                      <span>Утверждение...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-check-double-line"></i>
+                      <span>Утвердить все ({applications.length})</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           {applications?.length > 0 ? (
@@ -313,7 +381,7 @@ export default function SupervisorPage() {
                     <div className={styles.applicationActions}>
                       <button
                         onClick={() => handleApprove(app.id)}
-                        disabled={processing === app.id}
+                        disabled={processing === app.id || bulkProcessing}
                         className={`${styles.actionButton} ${styles.approveButton}`}
                       >
                         {processing === app.id ? (
@@ -327,13 +395,13 @@ export default function SupervisorPage() {
                       </button>
                       
                       <button
-                        onClick={() => handleReject(app.id)}
-                        disabled={processing === app.id}
-                        className={`${styles.actionButton} ${styles.rejectButton}`}
-                      >
-                        <i className="ri-close-line"></i>
-                        <span>Отклонить</span>
-                      </button>
+  onClick={() => handleReject(app.id, app.plateNumber)}
+  disabled={processing === app.id || bulkProcessing}
+  className={`${styles.actionButton} ${styles.rejectButton}`}
+>
+  <i className="ri-close-line"></i>
+  <span>Отклонить</span>
+</button>
                     </div>
                   </div>
                 );

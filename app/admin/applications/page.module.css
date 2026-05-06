@@ -1019,3 +1019,11 @@
     min-width: 100%;
   }
 }
+.deleteButton {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.deleteButton:hover {
+  background-color: #fecaca;
+}

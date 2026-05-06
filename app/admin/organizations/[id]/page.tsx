@@ -18,7 +18,7 @@ import Header from '@/components/Header/Header';
 export default function OrganizationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -48,6 +48,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     if (currentUser?.roleId === 1) {
       fetchOrganizationData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, id]);
 
   const fetchOrganizationData = async () => {
@@ -174,9 +175,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   const getContractStatus = (status: string) => {
     switch (status) {

@@ -2,18 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import accessListService from '@/services/access-list.service';
 import approvedPlateService from '@/services/approved-plate.service';
-import { AccessList, ApprovedPlate, ApiError } from '@/types';
+import { AccessList, ApprovedPlate } from '@/types';
 import { formatDate } from '@/utils/format';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function ParticipantListsPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [accessLists, setAccessLists] = useState<AccessList[]>([]);
@@ -22,6 +21,21 @@ export default function ParticipantListsPage() {
   const [platesLoading, setPlatesLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Модалка удаления номера
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    plateId: string;
+    plateNumber: string;
+    reason: string;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    plateId: '',
+    plateNumber: '',
+    reason: '',
+    loading: false,
+  });
 
   // Проверка роли
   useEffect(() => {
@@ -36,32 +50,32 @@ export default function ParticipantListsPage() {
     if (user && user.roleId === 4 && !dataLoaded) {
       fetchLists();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataLoaded]);
 
   const fetchLists = useCallback(async () => {
-  try {
-    setLoading(true);
-    
-    // Используем новый метод для получения своих прав
-    const listsData = await accessListService.getMyPermissions();
-    console.log('Available lists:', listsData);
-    
-    const safeLists = Array.isArray(listsData) ? listsData : [];
-    setAccessLists(safeLists);
-    
-    if (safeLists.length > 0) {
-      setSelectedList(safeLists[0]);
+    try {
+      setLoading(true);
+      
+      const listsData = await accessListService.getMyPermissions();
+      console.log('Available lists:', listsData);
+      
+      const safeLists = Array.isArray(listsData) ? listsData : [];
+      setAccessLists(safeLists);
+      
+      if (safeLists.length > 0) {
+        setSelectedList(safeLists[0]);
+      }
+      
+      setDataLoaded(true);
+    } catch (error) {
+      console.error('Error fetching lists:', error);
+      toast.error('Ошибка при загрузке списков');
+      setAccessLists([]);
+    } finally {
+      setLoading(false);
     }
-    
-    setDataLoaded(true);
-  } catch (error) {
-    console.error('Error fetching lists:', error);
-    toast.error('Ошибка при загрузке списков');
-    setAccessLists([]);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   // Загрузка номеров при выборе списка
   useEffect(() => {
@@ -70,6 +84,7 @@ export default function ParticipantListsPage() {
     } else {
       setPlates([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedList, user]);
 
   const fetchPlatesByList = async (listId: string) => {
@@ -77,18 +92,16 @@ export default function ParticipantListsPage() {
       setPlatesLoading(true);
       console.log('Fetching plates for list:', listId);
       
-      // Получаем все номера в списке
       const platesData = await approvedPlateService.getByList(listId);
       console.log('All plates in list:', platesData);
       
-      // Фильтруем только номера организации участника
       const organizationId = user?.organizationId;
       const filteredPlates = platesData?.filter(plate => 
         plate.organizationId === organizationId && plate.isActive
       );
       
       console.log('Filtered plates for organization:', filteredPlates);
-      setPlates(filteredPlates);
+      setPlates(filteredPlates || []);
       
     } catch (error) {
       console.error('Error fetching plates:', error);
@@ -114,6 +127,55 @@ export default function ParticipantListsPage() {
     }
   };
 
+  const openDeleteModal = (plateId: string, plateNumber: string) => {
+    setDeleteModal({
+      isOpen: true,
+      plateId,
+      plateNumber,
+      reason: '',
+      loading: false,
+    });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({
+      isOpen: false,
+      plateId: '',
+      plateNumber: '',
+      reason: '',
+      loading: false,
+    });
+  };
+
+  const handleDeletePlate = async () => {
+    if (!deleteModal.reason.trim()) {
+      toast.error('Укажите причину удаления номера');
+      return;
+    }
+
+    try {
+      setDeleteModal(prev => ({ ...prev, loading: true }));
+      
+      // Удаляем номер (деактивируем)
+      await approvedPlateService.delete(deleteModal.plateId, deleteModal.reason);
+      
+      toast.success(`Номер ${deleteModal.plateNumber} удалён из списка`);
+      
+      closeDeleteModal();
+      
+      // Обновляем список номеров
+      if (selectedList) {
+        await fetchPlatesByList(selectedList.id);
+      }
+      
+    } catch (error) {
+      console.error('Error deleting plate:', error);
+      toast.error('Ошибка при удалении номера');
+    } finally {
+      setDeleteModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const filteredPlates = plates?.filter(plate => {
     if (!searchTerm) return true;
     
@@ -124,10 +186,6 @@ export default function ParticipantListsPage() {
       (plate.vehicleModel?.toLowerCase() || '').includes(term)
     );
   });
-
-  const handleLogout = () => {
-    logout();
-  };
 
   const isPlateActive = (plate: ApprovedPlate) => {
     if (!plate.isActive) return false;
@@ -148,36 +206,7 @@ export default function ParticipantListsPage() {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.headerLeft}>
-            <Link href="/participant" className={styles.backLink}>
-              <i className="ri-arrow-left-line"></i>
-              <span>К заявкам</span>
-            </Link>
-            <div>
-              <h1 className={styles.title}>Мои номера в списках</h1>
-              <p className={styles.subtitle}>
-                Просмотр номеров вашей организации в списках доступа
-              </p>
-            </div>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge}>
-              Участник
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
-      <Header role='admin'/>
+      <Header role='participant'/>
 
       <main className={styles.main}>
         {accessLists.length === 0 ? (
@@ -210,7 +239,6 @@ export default function ParticipantListsPage() {
                         <span className={styles.listDescription}>{list.description}</span>
                       )}
                     </div>
-                    {/* <span className={styles.listPriority}>Приоритет: {list.priority}</span> */}
                   </button>
                 ))}
               </div>
@@ -269,67 +297,98 @@ export default function ParticipantListsPage() {
                   ) : filteredPlates?.length > 0 ? (
                     <div className={styles.platesGrid}>
                       {filteredPlates.map((plate) => {
-                        const active = isPlateActive(plate);
-                        return (
-                          <div
-                            key={plate.id}
-                            className={`${styles.plateCard} ${!active ? styles.plateCardInactive : ''}`}
-                          >
-                            <div className={styles.plateHeader}>
-                              <span className={styles.plateNumber}>{plate.plateNumber}</span>
-                              <span className={`${styles.statusBadge} ${active ? styles.statusActive : styles.statusInactive}`}>
-                                {active ? 'Активен' : 'Неактивен'}
-                              </span>
-                            </div>
-                            
-                            <div className={styles.plateDetails}>
-                              {(plate.vehicleBrand || plate.vehicleModel) && (
-                                <div className={styles.detailRow}>
-                                  <i className="ri-car-line"></i>
-                                  <span>
-                                    {plate.vehicleBrand} {plate.vehicleModel}
-                                    {plate.vehicleColor && ` (${plate.vehicleColor})`}
-                                  </span>
-                                </div>
-                              )}
-                              
-                              {plate.validFrom && (
-                                <div className={styles.detailRow}>
-                                  <i className="ri-calendar-check-line"></i>
-                                  <span>с {formatDate(plate.validFrom)}</span>
-                                </div>
-                              )}
-                              
-                              {plate.validUntil ? (
-                                <div className={styles.detailRow}>
-                                  <i className="ri-calendar-close-line"></i>
-                                  <span className={new Date(plate.validUntil) < new Date() ? styles.expiredDate : ''}>
-                                    до {formatDate(plate.validUntil)}
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className={styles.detailRow}>
-                                  <i className="ri-calendar-line"></i>
-                                  <span>бессрочно</span>
-                                </div>
-                              )}
-                              
-                              {plate.notes && (
-                                <div className={styles.detailRow}>
-                                  <i className="ri-file-text-line"></i>
-                                  <span className={styles.notes}>{plate.notes}</span>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className={styles.plateFooter}>
-                              <span className={styles.createdAt}>
-                                Добавлен: {formatDate(plate.createdAt)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+  const active = isPlateActive(plate);
+  
+  // Отладка
+  console.log('Rendering plate:', plate.plateNumber, 'active:', active, 'isActive:', plate.isActive);
+  
+  return (
+    <div
+      key={plate.id}
+      className={`${styles.plateCard} ${!active ? styles.plateCardInactive : ''}`}
+    >
+      <div className={styles.plateHeader}>
+        <span className={styles.plateNumber}>{plate.plateNumber}</span>
+        <span className={`${styles.statusBadge} ${active ? styles.statusActive : styles.statusInactive}`}>
+          {active ? 'Активен' : 'Неактивен'}
+        </span>
+      </div>
+      
+      <div className={styles.plateDetails}>
+        {(plate.vehicleBrand || plate.vehicleModel) && (
+          <div className={styles.detailRow}>
+            <i className="ri-car-line"></i>
+            <span>
+              {plate.vehicleBrand} {plate.vehicleModel}
+              {plate.vehicleColor && ` (${plate.vehicleColor})`}
+            </span>
+          </div>
+        )}
+        
+        {plate.validFrom && (
+          <div className={styles.detailRow}>
+            <i className="ri-calendar-check-line"></i>
+            <span>с {formatDate(plate.validFrom)}</span>
+          </div>
+        )}
+        
+        {plate.validUntil ? (
+          <div className={styles.detailRow}>
+            <i className="ri-calendar-close-line"></i>
+            <span className={new Date(plate.validUntil) < new Date() ? styles.expiredDate : ''}>
+              до {formatDate(plate.validUntil)}
+            </span>
+          </div>
+        ) : (
+          <div className={styles.detailRow}>
+            <i className="ri-calendar-line"></i>
+            <span>бессрочно</span>
+          </div>
+        )}
+        
+        {plate.notes && (
+          <div className={styles.detailRow}>
+            <i className="ri-file-text-line"></i>
+            <span className={styles.notes}>{plate.notes}</span>
+          </div>
+        )}
+      </div>
+      
+      <div className={styles.plateFooter}>
+        <span className={styles.createdAt}>
+          Добавлен: {formatDate(plate.createdAt)}
+        </span>
+        
+        {/* Кнопка удаления - принудительно показываем */}
+        <button
+          type="button"
+          onClick={() => {
+            console.log('Delete clicked for plate:', plate.plateNumber);
+            openDeleteModal(plate.id, plate.plateNumber);
+          }}
+          className={styles.deleteButton}
+          title="Удалить номер из списка"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            backgroundColor: '#fef2f2',
+            color: '#dc2626',
+            border: '1px solid #fee2e2',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          <i className="ri-delete-bin-line" style={{ fontSize: '16px' }}></i>
+          <span>Удалить</span>
+        </button>
+      </div>
+    </div>
+  );
+})}
                     </div>
                   ) : (
                     <div className={styles.emptyPlates}>
@@ -357,6 +416,76 @@ export default function ParticipantListsPage() {
           </div>
         )}
       </main>
+
+      {/* Модальное окно удаления номера */}
+      {deleteModal.isOpen && (
+        <div className={styles.modalOverlay} onClick={closeDeleteModal}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>
+                <i className="ri-delete-bin-line"></i>
+                Удаление номера из списка
+              </h3>
+              <button onClick={closeDeleteModal} className={styles.modalClose}>
+                <i className="ri-close-line"></i>
+              </button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              <div className={styles.warningBox}>
+                <i className="ri-alert-line"></i>
+                <p>
+                  Вы собираетесь удалить номер <strong>{deleteModal.plateNumber}</strong> из списка пропусков.
+                  После удаления машина не сможет проехать через КПП.
+                </p>
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label htmlFor="deleteReason" className={styles.label}>
+                  Причина удаления <span className={styles.required}>*</span>
+                </label>
+                <textarea
+                  id="deleteReason"
+                  value={deleteModal.reason}
+                  onChange={(e) => setDeleteModal(prev => ({ ...prev, reason: e.target.value }))}
+                  className={styles.textarea}
+                  placeholder="Например: сотрудник уволился, продал машину и т.д."
+                  rows={4}
+                  autoFocus
+                />
+              </div>
+            </div>
+            
+            <div className={styles.modalFooter}>
+              <button
+                onClick={closeDeleteModal}
+                className={styles.cancelButton}
+                disabled={deleteModal.loading}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDeletePlate}
+                disabled={deleteModal.loading || !deleteModal.reason.trim()}
+                className={styles.submitButton}
+                style={{ backgroundColor: '#dc2626' }}
+              >
+                {deleteModal.loading ? (
+                  <>
+                    <i className="ri-loader-4-line ri-spin"></i>
+                    <span>Удаление...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="ri-delete-bin-line"></i>
+                    <span>Удалить номер</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

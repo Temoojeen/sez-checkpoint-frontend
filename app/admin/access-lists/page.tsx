@@ -222,8 +222,13 @@ export default function AccessListsPage() {
                 Создать список
               </Link>
             )}
+            
           </div>
         )}
+         <Link href="/admin/access-lists/new" style={{marginTop:"20px"}} className={styles.emptyStateButton}>
+                <i className="ri-add-line"></i>
+                Создать новый список
+              </Link>
       </main>
     </div>
   );

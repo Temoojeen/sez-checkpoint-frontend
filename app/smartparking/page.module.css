@@ -637,3 +637,85 @@
 .approveAllButton i {
   font-size: 18px;
 }
+
+.modalSubtext {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+.loadingLocations {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: #6b7280;
+}
+
+.loadingLocations i {
+  font-size: 20px;
+}
+
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select:hover {
+  border-color: #d1d5db;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Адаптация существующего модального окна для новой ширины */
+.modal {
+  max-width: 480px;
+  width: 90%;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Для больших экранов */
+@media (min-width: 640px) {
+  .modal {
+    max-width: 500px;
+  }
+}
+/* Добавьте эти стили */
+
+.hint {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.infoBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #0369a1;
+}
+
+.infoBox i {
+  font-size: 18px;
+  flex-shrink: 0;
+}

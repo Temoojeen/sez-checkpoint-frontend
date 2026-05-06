@@ -7,23 +7,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import organizationService from '@/services/organization.service';
 import userService from '@/services/user.service';
+import applicationService from '@/services/application.service';
 import { Organization, User } from '@/types';
 import { getRoleName } from '@/utils/roleRedirect';
 import { formatDate } from '@/utils/format';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
-// Временный тип для заявок
-interface TempApplication {
-  id: string;
-  plateNumber: string;
-  organizationName?: string;
-  status: string;
-  createdAt: string;
-}
-
 export default function AdminDashboard() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [pageLoading, setPageLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -32,10 +24,12 @@ export default function AdminDashboard() {
     users: 0,
     applications: 0,
     pendingApplications: 0,
+    operatorApproved: 0,
+    supervisorApproved: 0,
+    rejected: 0,
   });
   const [recentOrganizations, setRecentOrganizations] = useState<Organization[]>([]);
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
-  const [recentApplications, setRecentApplications] = useState<TempApplication[]>([]);
   const [authChecked, setAuthChecked] = useState(false);
 
   // Проверка авторизации и прав доступа
@@ -45,7 +39,6 @@ export default function AdminDashboard() {
         router.push('/login');
         return;
       }
-      console.log(recentApplications)
       
       if (user.roleId !== 1) {
         toast.error('У вас нет доступа к этой странице');
@@ -68,14 +61,16 @@ export default function AdminDashboard() {
     try {
       setPageLoading(true);
       
-      // Загружаем организации и пользователей
-      const [orgs, users] = await Promise.all([
+      // Загружаем организации, пользователей и заявки
+      const [orgs, users, applications] = await Promise.all([
         organizationService.getAll(),
         userService.getAll(),
+        applicationService.getAllApplications(), // Получаем все заявки
       ]);
 
       console.log('Organizations:', orgs);
       console.log('Users:', users);
+      console.log('Applications:', applications);
 
       // Проверяем, что данные не null и имеют метод slice
       if (orgs && Array.isArray(orgs)) {
@@ -90,14 +85,21 @@ export default function AdminDashboard() {
         setRecentUsers([]);
       }
 
-      // Временные данные для заявок
-      setRecentApplications([]);
+      // Подсчет статистики по заявкам
+      const apps = Array.isArray(applications) ? applications : [];
+      const pendingCount = apps.filter(a => a.status === 'pending').length;
+      const operatorApprovedCount = apps.filter(a => a.status === 'operator_approved').length;
+      const supervisorApprovedCount = apps.filter(a => a.status === 'supervisor_approved').length;
+      const rejectedCount = apps.filter(a => a.status === 'rejected').length;
 
       setStats({
         organizations: orgs?.length || 0,
         users: users?.length || 0,
-        applications: 0,
-        pendingApplications: 0,
+        applications: apps.length,
+        pendingApplications: pendingCount,
+        operatorApproved: operatorApprovedCount,
+        supervisorApproved: supervisorApprovedCount,
+        rejected: rejectedCount,
       });
       
       setDataLoaded(true);
@@ -109,9 +111,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
+  
 
   if (loading || !authChecked) {
     return (
@@ -137,7 +137,6 @@ export default function AdminDashboard() {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
       <Header role='admin'/>
 
       <main className={styles.main}>
@@ -156,12 +155,6 @@ export default function AdminDashboard() {
                 <i className="ri-building-4-line"></i>
               </div>
             </div>
-            
-            <Link
-  href="/admin/approved-plates"
-  className="flex flex-col items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
->
-</Link>
           </div>
 
           <div className={styles.statCard}>
@@ -174,7 +167,6 @@ export default function AdminDashboard() {
                 <i className="ri-user-line"></i>
               </div>
             </div>
-            
           </div>
 
           <div className={styles.statCard}>
@@ -187,17 +179,55 @@ export default function AdminDashboard() {
                 <i className="ri-file-list-3-line"></i>
               </div>
             </div>
-            
           </div>
 
           <div className={styles.statCard}>
             <div className={styles.statHeader}>
               <div>
-                <p className={styles.statLabel}>Ожидают</p>
+                <p className={styles.statLabel}>Ожидают оператора</p>
                 <p className={styles.statValue}>{stats.pendingApplications}</p>
               </div>
               <div className={`${styles.statIcon} ${styles.statIconYellow}`}>
                 <i className="ri-time-line"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Дополнительная статистика по заявкам */}
+        <div className={styles.statsGrid} style={{ marginTop: '16px' }}>
+          <div className={styles.statCard}>
+            <div className={styles.statHeader}>
+              <div>
+                <p className={styles.statLabel}>Одобрено оператором</p>
+                <p className={styles.statValue}>{stats.operatorApproved}</p>
+              </div>
+              <div className={`${styles.statIcon}`} style={{ backgroundColor: '#dbeafe', color: '#2563eb' }}>
+                <i className="ri-user-star-line"></i>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.statCard}>
+            <div className={styles.statHeader}>
+              <div>
+                <p className={styles.statLabel}>Утверждено</p>
+                <p className={styles.statValue}>{stats.supervisorApproved}</p>
+              </div>
+              <div className={`${styles.statIcon}`} style={{ backgroundColor: '#d1fae5', color: '#059669' }}>
+                <i className="ri-checkbox-circle-line"></i>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.statCard}>
+            <div className={styles.statHeader}>
+              <div>
+                <p className={styles.statLabel}>Отклонено</p>
+                <p className={styles.statValue}>{stats.rejected}</p>
+              </div>
+              <div className={`${styles.statIcon}`} style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                <i className="ri-close-circle-line"></i>
               </div>
             </div>
           </div>
@@ -239,22 +269,30 @@ export default function AdminDashboard() {
               href="/admin/access-logs/"
               className={styles.actionCard}
             >
-              <i className={`ri-list-check-3 ${styles.actionIcon}`}></i>
+              <i className={`ri-history-line ${styles.actionIcon}`}></i>
               <span className={styles.actionText}>История</span>
             </Link>
             <Link
-              href="admin/applications"
+              href="/admin/applications"
               className={styles.actionCard}
             >
-              <i className={`ri-list-check-3 ${styles.actionIcon}`}></i>
+              <i className={`ri-file-list-3-line ${styles.actionIcon}`}></i>
               <span className={styles.actionText}>Заявки</span>
             </Link>
             <Link
-              href="admin/approved-plates"
+              href="/admin/approved-plates"
               className={styles.actionCard}
             >
-              <i className={`ri-list-check-3 ${styles.actionIcon}`}></i>
+              <i className={`ri-car-line ${styles.actionIcon}`}></i>
               <span className={styles.actionText}>Номера</span>
+            </Link>
+            <Link href="/admin/deleted-plates" className={styles.actionCard}>
+              <i className={`ri-car-line ${styles.actionIcon}`}></i>
+            
+            <span className={styles.actionText}>
+              
+              Удаленные номера участников
+              </span>
             </Link>
           </div>
         </div>

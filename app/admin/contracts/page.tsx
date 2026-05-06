@@ -13,7 +13,7 @@ import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function ContractsPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -159,9 +159,6 @@ export default function ContractsPage() {
     return true;
   });
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (

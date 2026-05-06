@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,7 +17,7 @@ import Header from '@/components/Header/Header';
 export default function AccessListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [accessList, setAccessList] = useState<AccessList | null>(null);
@@ -41,73 +41,74 @@ export default function AccessListDetailPage({ params }: { params: Promise<{ id:
     }
   }, [currentUser, router]);
 
-  // Загрузка данных
+  // Wrap fetchAccessListData in useCallback
+  const fetchAccessListData = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Загружаем данные списка
+      const listData = await accessListService.getById(id);
+      setAccessList(listData);
+      
+      // Заполняем форму редактирования
+      setEditForm({
+        name: listData.name || '',
+        description: listData.description || '',
+        color: listData.color || '',
+        priority: listData.priority || 0,
+        isActive: listData.isActive,
+      });
+      
+      // Загружаем номера в списке
+      const platesData = await approvedPlateService.getByListAdmin(id);
+      setApprovedPlates(platesData);
+      
+      // Загружаем всех пользователей (операторов и участников)
+      const allUsers = await userService.getAll();
+      const filteredUsers = allUsers.filter(u => u.roleId === 2 || u.roleId === 4);
+      
+      // Загружаем права пользователей с проверкой на null
+      const usersWithPermissions = await Promise.all(
+        filteredUsers.map(async (user) => {
+          try {
+            const permissions = await accessListService.getUserPermissions(user.id);
+            // Проверяем, что permissions - массив и не null
+            const hasPermission = Array.isArray(permissions) 
+              ? permissions.some(p => p && p.id === id)
+              : false;
+            return { ...user, hasPermission };
+          } catch (error) {
+            console.error(`Error fetching permissions for user ${user.id}:`, error);
+            return { ...user, hasPermission: false };
+          }
+        })
+      );
+      setUsers(usersWithPermissions);
+      
+    } catch (error: unknown) {
+      console.error('Error fetching access list:', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as ApiError;
+        if (apiError.response?.status === 404) {
+          toast.error('Список не найден');
+          router.push('/admin/access-lists');
+        } else {
+          toast.error('Ошибка при загрузке данных');
+        }
+      } else {
+        toast.error('Ошибка при загрузке данных');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router]); // Add dependencies
+
+  // Загрузка данных - now with proper dependencies
   useEffect(() => {
     if (currentUser?.roleId === 1) {
       fetchAccessListData();
     }
-  }, [currentUser, id]);
-
- const fetchAccessListData = async () => {
-  try {
-    setLoading(true);
-    
-    // Загружаем данные списка
-    const listData = await accessListService.getById(id);
-    setAccessList(listData);
-    
-    // Заполняем форму редактирования
-    setEditForm({
-      name: listData.name || '',
-      description: listData.description || '',
-      color: listData.color || '',
-      priority: listData.priority || 0,
-      isActive: listData.isActive,
-    });
-    
-    // Загружаем номера в списке
-    const platesData = await approvedPlateService.getByListAdmin(id);
-    setApprovedPlates(platesData);
-    
-    // Загружаем всех пользователей (операторов и участников)
-    const allUsers = await userService.getAll();
-    const filteredUsers = allUsers.filter(u => u.roleId === 2 || u.roleId === 4);
-    
-    // Загружаем права пользователей с проверкой на null
-    const usersWithPermissions = await Promise.all(
-      filteredUsers.map(async (user) => {
-        try {
-          const permissions = await accessListService.getUserPermissions(user.id);
-          // Проверяем, что permissions - массив и не null
-          const hasPermission = Array.isArray(permissions) 
-            ? permissions.some(p => p && p.id === id)
-            : false;
-          return { ...user, hasPermission };
-        } catch (error) {
-          console.error(`Error fetching permissions for user ${user.id}:`, error);
-          return { ...user, hasPermission: false };
-        }
-      })
-    );
-    setUsers(usersWithPermissions);
-    
-  } catch (error: unknown) {
-    console.error('Error fetching access list:', error);
-    if (error && typeof error === 'object' && 'response' in error) {
-      const apiError = error as ApiError;
-      if (apiError.response?.status === 404) {
-        toast.error('Список не найден');
-        router.push('/admin/access-lists');
-      } else {
-        toast.error('Ошибка при загрузке данных');
-      }
-    } else {
-      toast.error('Ошибка при загрузке данных');
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  }, [currentUser, fetchAccessListData]); // Added fetchAccessListData to dependencies
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -216,10 +217,6 @@ export default function AccessListDetailPage({ params }: { params: Promise<{ id:
       console.error('Error toggling user permission:', error);
       toast.error('Ошибка при изменении прав доступа');
     }
-  };
-
-  const handleLogout = () => {
-    logout();
   };
 
   if (loading) {

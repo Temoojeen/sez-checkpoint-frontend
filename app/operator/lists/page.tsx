@@ -2,18 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import accessListService from '@/services/access-list.service';
 import approvedPlateService from '@/services/approved-plate.service';
-import { AccessList, ApprovedPlate, ApiError } from '@/types';
+import { AccessList, ApprovedPlate } from '@/types';
 import { formatDate } from '@/utils/format';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function OperatorListsPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [accessLists, setAccessLists] = useState<AccessList[]>([]);
@@ -36,6 +35,7 @@ export default function OperatorListsPage() {
     if (user && user.roleId === 2 && !dataLoaded) {
       fetchLists();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataLoaded]);
 
   const fetchLists = useCallback(async () => {
@@ -121,10 +121,6 @@ export default function OperatorListsPage() {
       (plate.vehicleModel?.toLowerCase() || '').includes(term)
     );
   });
-
-  const handleLogout = () => {
-    logout();
-  };
 
   const isPlateActive = (plate: ApprovedPlate) => {
     if (!plate.isActive) return false;

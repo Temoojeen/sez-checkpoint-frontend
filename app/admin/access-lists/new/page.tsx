@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import accessListService from '@/services/access-list.service';
 import { ApiError } from '@/types';
 import styles from './page.module.css';
+import Header from '@/components/Header/Header';
 
 export default function NewAccessListPage() {
   const router = useRouter();
@@ -84,7 +85,8 @@ export default function NewAccessListPage() {
   return (
     <div className={styles.container}>
       {/* Заголовок */}
-      <div className={styles.header}>
+      <Header role='admin'/>
+      {/* <div className={styles.header}>
         <div className={styles.headerContent}>
           <div>
             <h1 className={styles.title}>Новый список доступа</h1>
@@ -95,7 +97,7 @@ export default function NewAccessListPage() {
             <span>Назад к списку</span>
           </Link>
         </div>
-      </div>
+      </div> */}
 
       {/* Форма */}
       <div className={styles.main}>

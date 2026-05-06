@@ -14,7 +14,7 @@ import Header from '@/components/Header/Header';
 export default function EditContractPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,6 +44,7 @@ export default function EditContractPage({ params }: { params: Promise<{ id: str
     if (currentUser?.roleId === 1) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, id]);
 
   const fetchData = async () => {
@@ -153,9 +154,6 @@ export default function EditContractPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   const getStatusInfo = (status: string) => {
     switch (status) {
@@ -278,7 +276,7 @@ export default function EditContractPage({ params }: { params: Promise<{ id: str
                 required
               >
                 <option value="">Выберите организацию</option>
-                {organizations.map((org) => (
+                {organizations?.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.name} ({org.bin})
                   </option>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,14 +11,13 @@ import accessListService from '@/services/access-list.service';
 import userService from '@/services/user.service';
 import { Application, Organization, AccessList, User, ApiError } from '@/types';
 import { formatDate, getStatusBadge } from '@/utils/format';
-import { getRoleName } from '@/utils/roleRedirect';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
 export default function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<Application | null>(null);
@@ -41,14 +40,7 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
     }
   }, [currentUser, router]);
 
-  // Загрузка данных
-  useEffect(() => {
-    if (currentUser?.roleId === 1) {
-      fetchApplicationData();
-    }
-  }, [currentUser, id]);
-
-  const fetchApplicationData = async () => {
+  const fetchApplicationData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -122,7 +114,13 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, router]);
+useEffect(() => {
+  if (currentUser?.roleId === 1) {
+    fetchApplicationData();
+  }
+}, [currentUser, fetchApplicationData]);
+
 
   const handleApproveAsOperator = async () => {
     if (!application) return;
@@ -203,9 +201,6 @@ export default function ApplicationDetailPage({ params }: { params: Promise<{ id
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (loading) {
     return (
