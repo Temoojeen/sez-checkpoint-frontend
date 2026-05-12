@@ -719,3 +719,37 @@
   font-size: 18px;
   flex-shrink: 0;
 }
+/* page.module.css - добавьте эти стили */
+
+.loadingHint {
+  font-size: 0.8em;
+  color: #6b7280;
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.groupOption {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.groupName {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.groupDescription {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.groupsInfo {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-align: right;
+}

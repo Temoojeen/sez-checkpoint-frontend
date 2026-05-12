@@ -10,6 +10,7 @@ import { formatDate, getStatusBadge } from '@/utils/format';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 import { parqourAPI, Parking, WhitelistGroup } from '@/services/parqour.api';
+import { Autocomplete, TextField } from '@mui/material';
 
 const LOCATION_ID = 97;
 
@@ -30,10 +31,9 @@ interface ApproveModalState {
   parkings: Parking[];
   selectedParkingId: number | null;
   groups: WhitelistGroup[];
-  selectedGroupId: number | null;
-  groupsTotalPages: number;
-  groupsCurrentPage: number;
+  selectedGroup: WhitelistGroup | null;
   loading: boolean;
+  groupsLoading: boolean;
 }
 
 export default function SmartParkingOperatorPage() {
@@ -63,10 +63,9 @@ export default function SmartParkingOperatorPage() {
     parkings: [],
     selectedParkingId: null,
     groups: [],
-    selectedGroupId: null,
-    groupsTotalPages: 0,
-    groupsCurrentPage: 0,
+    selectedGroup: null,
     loading: false,
+    groupsLoading: false,
   });
 
   useEffect(() => {
@@ -77,10 +76,11 @@ export default function SmartParkingOperatorPage() {
   }, [user, router]);
 
   useEffect(() => {
-    if (user && user.roleId === 6 && !dataLoaded) {
-      fetchApplications();
-    }
-  }, [user, dataLoaded]);
+  if (user && user.roleId === 6 && !dataLoaded) {
+    fetchApplications();
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user, dataLoaded]);
 
   const fetchApplications = useCallback(async () => {
     try {
@@ -115,10 +115,9 @@ export default function SmartParkingOperatorPage() {
       parkings: [],
       selectedParkingId: null,
       groups: [],
-      selectedGroupId: null,
-      groupsTotalPages: 0,
-      groupsCurrentPage: 0,
+      selectedGroup: null,
       loading: true,
+      groupsLoading: false,
     });
 
     try {
@@ -138,87 +137,84 @@ export default function SmartParkingOperatorPage() {
     }
   };
 
-  const loadGroups = async (parkingId: number, page: number = 0) => {
-    setApproveModal(prev => ({ ...prev, loading: true, selectedParkingId: parkingId }));
+  const loadAllGroups = async (parkingId: number) => {
+    setApproveModal(prev => ({ 
+      ...prev, 
+      selectedParkingId: parkingId,
+      groupsLoading: true,
+      step: 'groups',
+      selectedGroup: null,
+    }));
     
     try {
-      const paginatedResponse = await parqourAPI.getWhitelistGroups(parkingId, page, 20);
+      const allGroups: WhitelistGroup[] = [];
+      let currentPage = 0;
+      let totalPages = 1;
+      
+      while (currentPage < totalPages) {
+        const paginatedResponse = await parqourAPI.getWhitelistGroups(parkingId, currentPage, 100);
+        allGroups.push(...paginatedResponse.content);
+        totalPages = paginatedResponse.totalPages;
+        currentPage++;
+      }
       
       setApproveModal(prev => ({
         ...prev,
-        step: 'groups',
-        groups: paginatedResponse.content, // Берем массив из поля content
-        groupsTotalPages: paginatedResponse.totalPages,
-        groupsCurrentPage: paginatedResponse.page ?? paginatedResponse.number,
-        selectedGroupId: null,
-        loading: false,
+        groups: allGroups,
+        groupsLoading: false,
       }));
     } catch (error) {
       console.error('Error loading groups:', error);
       toast.error('Ошибка при загрузке списка групп');
+      setApproveModal(prev => ({ 
+        ...prev, 
+        groupsLoading: false,
+        step: 'parkings'
+      }));
+    }
+  };
+
+  const handleFinalApprove = async () => {
+    if (!approveModal.selectedGroup) {
+      toast.error('Выберите группу');
+      return;
+    }
+
+    if (!approveModal.selectedParkingId) {
+      toast.error('Парковка не выбрана');
+      return;
+    }
+
+    try {
+      setProcessing(approveModal.applicationId);
+      setApproveModal(prev => ({ ...prev, loading: true }));
+      
+      await parqourAPI.addCarToGroup(
+        approveModal.selectedParkingId,
+        approveModal.selectedGroup.id,
+        approveModal.plateNumber
+      );
+      
+      await applicationService.deleteSmartParkingApplication(approveModal.applicationId);
+      
+      toast.success(`Заявка одобрена! Номер ${approveModal.plateNumber} добавлен в группу "${approveModal.selectedGroup.name}"`);
+      
+      setApproveModal(prev => ({ ...prev, isOpen: false }));
+      await fetchApplications();
+      
+    } catch (error) {
+      console.error('Error approving application:', error);
+      
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Ошибка при одобрении заявки');
+      }
+    } finally {
+      setProcessing(null);
       setApproveModal(prev => ({ ...prev, loading: false }));
     }
   };
-
-  const loadNextGroupsPage = async () => {
-    if (!approveModal.selectedParkingId) return;
-    const nextPage = approveModal.groupsCurrentPage + 1;
-    if (nextPage < approveModal.groupsTotalPages) {
-      await loadGroups(approveModal.selectedParkingId, nextPage);
-    }
-  };
-
-  const loadPreviousGroupsPage = async () => {
-    if (!approveModal.selectedParkingId) return;
-    const prevPage = approveModal.groupsCurrentPage - 1;
-    if (prevPage >= 0) {
-      await loadGroups(approveModal.selectedParkingId, prevPage);
-    }
-  };
-
-const handleFinalApprove = async () => {
-  if (!approveModal.selectedGroupId) {
-    toast.error('Выберите группу');
-    return;
-  }
-
-  if (!approveModal.selectedParkingId) {
-    toast.error('Парковка не выбрана');
-    return;
-  }
-
-  try {
-    setProcessing(approveModal.applicationId);
-    setApproveModal(prev => ({ ...prev, loading: true }));
-    
-    // 1. Добавляем номер в группу Parqour
-    await parqourAPI.addCarToGroup(
-      approveModal.selectedParkingId,
-      approveModal.selectedGroupId,
-      approveModal.plateNumber
-    );
-    
-    // 2. Удаляем заявку через специальный эндпоинт для SmartParking
-    await applicationService.deleteSmartParkingApplication(approveModal.applicationId);
-    
-    toast.success(`Заявка одобрена! Номер ${approveModal.plateNumber} добавлен в группу`);
-    
-    setApproveModal(prev => ({ ...prev, isOpen: false }));
-    await fetchApplications();
-    
-  } catch (error) {
-    console.error('Error approving application:', error);
-    
-    if (error instanceof Error) {
-      toast.error(error.message);
-    } else {
-      toast.error('Ошибка при одобрении заявки');
-    }
-  } finally {
-    setProcessing(null);
-    setApproveModal(prev => ({ ...prev, loading: false }));
-  }
-};
 
   const openRejectModal = (applicationId: string, plateNumber: string) => {
     setRejectModal({
@@ -283,7 +279,7 @@ const handleFinalApprove = async () => {
       ...prev,
       step: 'parkings',
       groups: [],
-      selectedGroupId: null,
+      selectedGroup: null,
     }));
   };
 
@@ -520,12 +516,13 @@ const handleFinalApprove = async () => {
                 </div>
               ) : (
                 <>
+                  {/* Шаг 1: Выбор парковки */}
                   {approveModal.step === 'parkings' && (
                     <div className={styles.formGroup}>
                       <label className={styles.label}>Парковка *</label>
                       <select
                         value={approveModal.selectedParkingId ?? ''}
-                        onChange={(e) => loadGroups(parseInt(e.target.value))}
+                        onChange={(e) => loadAllGroups(parseInt(e.target.value))}
                         className={styles.select}
                       >
                         <option value="">Выберите парковку...</option>
@@ -538,54 +535,59 @@ const handleFinalApprove = async () => {
                     </div>
                   )}
                   
+                  {/* Шаг 2: Выбор группы с Autocomplete */}
                   {approveModal.step === 'groups' && (
-                    <>
-                      <div className={styles.formGroup}>
-                        <label className={styles.label}>Группа доступа *</label>
-                        <select
-                          value={approveModal.selectedGroupId ?? ''}
-                          onChange={(e) => setApproveModal(prev => ({ 
-                            ...prev, 
-                            selectedGroupId: parseInt(e.target.value) 
-                          }))}
-                          className={styles.select}
-                        >
-                          <option value="">Выберите группу...</option>
-                          {approveModal.groups.map((group) => (
-                            <option key={group.id} value={group.id}>
-                              {group.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      {/* Пагинация для групп */}
-                      {approveModal.groupsTotalPages > 1 && (
-                        <div className={styles.pagination}>
-                          <button
-                            onClick={loadPreviousGroupsPage}
-                            disabled={approveModal.groupsCurrentPage === 0}
-                            className={styles.paginationButton}
-                          >
-                            <i className="ri-arrow-left-s-line"></i>
-                          </button>
-                          <span className={styles.paginationInfo}>
-                            Страница {approveModal.groupsCurrentPage + 1} из {approveModal.groupsTotalPages}
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>
+                        Группа доступа *
+                        {approveModal.groupsLoading && (
+                          <span className={styles.loadingHint}>
+                            <i className="ri-loader-4-line ri-spin"></i> загрузка групп...
                           </span>
-                          <button
-                            onClick={loadNextGroupsPage}
-                            disabled={approveModal.groupsCurrentPage + 1 >= approveModal.groupsTotalPages}
-                            className={styles.paginationButton}
-                          >
-                            <i className="ri-arrow-right-s-line"></i>
-                          </button>
+                        )}
+                      </label>
+                      
+                      <Autocomplete
+                        id="group-select"
+                        options={approveModal.groups}
+                        loading={approveModal.groupsLoading}
+                        value={approveModal.selectedGroup}
+                        onChange={(_, newValue) => {
+                          setApproveModal(prev => ({
+                            ...prev,
+                            selectedGroup: newValue,
+                          }));
+                        }}
+                        getOptionLabel={(option) => option.name}
+                        isOptionEqualToValue={(option, value) => option.id === value.id}
+                        noOptionsText="Группы не найдены"
+                        loadingText="Загрузка групп..."
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder="Начните вводить название группы..."
+                          />
+                        )}
+                        renderOption={(props, option) => {
+                          const { key, ...optionProps } = props;
+                          return (
+                            <li key={key} {...optionProps}>
+                              <div className={styles.groupOption}>
+                                <span className={styles.groupName}>{option.name}</span>
+                              </div>
+                            </li>
+                          );
+                        }}
+                        fullWidth
+                        disabled={approveModal.groupsLoading}
+                      />
+                      
+                      {approveModal.groups.length > 0 && (
+                        <div className={styles.groupsInfo}>
+                          Всего доступно групп: {approveModal.groups.length}
                         </div>
                       )}
-                      
-                      <div className={styles.groupsInfo}>
-                        Всего групп: {approveModal.groups.length} из {approveModal.groupsTotalPages * 20}+
-                      </div>
-                    </>
+                    </div>
                   )}
                 </>
               )}
@@ -593,18 +595,31 @@ const handleFinalApprove = async () => {
             
             <div className={styles.modalFooter}>
               {approveModal.step === 'groups' && (
-                <button onClick={goBackToParkings} className={styles.cancelButton}>
+                <button 
+                  onClick={goBackToParkings} 
+                  className={styles.cancelButton}
+                  disabled={approveModal.loading}
+                >
                   <i className="ri-arrow-left-line"></i>
-                  Назад
+                  Назад к парковкам
                 </button>
               )}
-              <button onClick={closeApproveModal} className={styles.cancelButton}>
+              <button 
+                onClick={closeApproveModal} 
+                className={styles.cancelButton}
+                disabled={approveModal.loading}
+              >
                 Отмена
               </button>
               {approveModal.step === 'groups' && (
                 <button
                   onClick={handleFinalApprove}
-                  disabled={!approveModal.selectedGroupId || approveModal.loading || processing === approveModal.applicationId}
+                  disabled={
+                    !approveModal.selectedGroup || 
+                    approveModal.loading || 
+                    approveModal.groupsLoading || 
+                    processing === approveModal.applicationId
+                  }
                   className={styles.submitButton}
                   style={{ backgroundColor: '#10b981' }}
                 >

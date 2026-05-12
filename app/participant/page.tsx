@@ -148,7 +148,7 @@ export default function ParticipantPage() {
       });
       
       if (smartParking) {
-        toast.success('Заявки на КПП 1 и SmartParking успешно отправлены');
+        toast.success('Заявки на КПП 1 и Parkomat успешно отправлены');
       } else {
         toast.success('Заявка успешно отправлена');
       }
