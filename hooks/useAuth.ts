@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import authService from '@/services/auth.service';
@@ -29,6 +29,47 @@ export function useAuth() {
     const loadUser = () => {
       try {
         const currentUser = authService.getCurrentUser();
+        
+        // Проверяем, есть ли токен и не истек ли он
+        const token = Cookies.get('token');
+        if (!token && currentUser) {
+          // Токена нет, но пользователь есть в памяти - очищаем
+          authService.logout();
+          setUser(null);
+          setLoading(false);
+          router.push('/login');
+          return;
+        }
+        
+        // Проверяем не истек ли токен
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const isExpired = payload.exp * 1000 < Date.now();
+            
+            if (isExpired) {
+              // Токен истек - очищаем все
+              console.log('🕐 Токен истек, выполняем выход');
+              Cookies.remove('token', { path: '/' });
+              authService.logout();
+              setUser(null);
+              setLoading(false);
+              router.push('/login');
+              return;
+            }
+          } catch (e) {
+            console.log(e)
+            // Невалидный токен
+            console.error('Невалидный токен');
+            Cookies.remove('token', { path: '/' });
+            authService.logout();
+            setUser(null);
+            setLoading(false);
+            router.push('/login');
+            return;
+          }
+        }
+        
         setUser(currentUser);
       } catch (error) {
         console.error('Error loading user:', error);
@@ -39,7 +80,7 @@ export function useAuth() {
     };
 
     loadUser();
-  }, []);
+  }, [router]);
 
   const login = async (username: string, password: string): Promise<LoginResult> => {
     try {
@@ -67,12 +108,12 @@ export function useAuth() {
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authService.logout();
     Cookies.remove('token', { path: '/' });
     setUser(null);
     router.push('/login');
-  };
+  }, [router]);
 
   const hasRole = (allowedRoles: number[]): boolean => {
     if (!user) return false;
@@ -81,7 +122,7 @@ export function useAuth() {
 
   return {
     user,
-    loading, // Это isLoading
+    loading,
     login,
     logout,
     hasRole,

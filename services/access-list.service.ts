@@ -67,6 +67,10 @@ class AccessListService {
     await api.delete(`/admin/access-lists/${id}`);
   }
 
+  async hardDelete(id: string): Promise<void> {
+    await api.delete(`/admin/access-lists/${id}/hard`);
+  }
+
   // Для администратора - получение прав пользователя
   async getUserPermissions(userId: string): Promise<AccessList[]> {
     try {

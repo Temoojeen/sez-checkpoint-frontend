@@ -31,19 +31,6 @@ export default function AccessListsPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Вы уверены, что хотите удалить список "${name}"?`)) {
-      try {
-        await accessListService.delete(id);
-        toast.success('Список удален');
-        fetchLists();
-      } catch (error) {
-        console.error('Error deleting list:', error);
-        toast.error('Ошибка при удалении списка');
-      }
-    }
-  };
-
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
       await accessListService.update(id, { isActive: !currentStatus });
@@ -52,6 +39,19 @@ export default function AccessListsPage() {
     } catch (error) {
       console.error('Error toggling list status:', error);
       toast.error('Ошибка при изменении статуса');
+    }
+  };
+
+  const handleHardDelete = async (id: string, name: string) => {
+    if (window.confirm(`Вы уверены, что хотите ПОЛНОСТЬЮ удалить список "${name}"?\n\nЭто действие нельзя отменить. Все номера в этом списке также будут удалены.`)) {
+      try {
+        await accessListService.hardDelete(id);
+        toast.success('Список полностью удален');
+        fetchLists();
+      } catch (error) {
+        console.error('Error hard deleting list:', error);
+        toast.error('Ошибка при удалении списка');
+      }
     }
   };
 
@@ -80,19 +80,6 @@ export default function AccessListsPage() {
 
   return (
     <div className={styles.container}>
-      {/* Заголовок */}
-      {/* <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Списки доступа</h1>
-            <p className={styles.subtitle}>Управление списками для пропусков</p>
-          </div>
-          <Link href="/admin/access-lists/new" className={styles.createButton}>
-            <i className="ri-add-line"></i>
-            <span>Новый список</span>
-          </Link>
-        </div>
-      </div> */}
       <Header role='admin'/>
 
       <main className={styles.main}>
@@ -197,9 +184,9 @@ export default function AccessListsPage() {
                     <i className={list.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'}></i>
                   </button>
                   <button
-                    onClick={() => handleDelete(list.id, list.name)}
+                    onClick={() => handleHardDelete(list.id, list.name)}
                     className={`${styles.actionButton} ${styles.actionDanger}`}
-                    title="Удалить"
+                    title="Удалить полностью"
                   >
                     <i className="ri-delete-bin-line"></i>
                   </button>
@@ -222,13 +209,12 @@ export default function AccessListsPage() {
                 Создать список
               </Link>
             )}
-            
           </div>
         )}
-         <Link href="/admin/access-lists/new" style={{marginTop:"20px"}} className={styles.emptyStateButton}>
-                <i className="ri-add-line"></i>
-                Создать новый список
-              </Link>
+        <Link href="/admin/access-lists/new" style={{marginTop:"20px"}} className={styles.emptyStateButton}>
+          <i className="ri-add-line"></i>
+          Создать новый список
+        </Link>
       </main>
     </div>
   );

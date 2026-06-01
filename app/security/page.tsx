@@ -316,14 +316,6 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
   }
 };
 
-  const clearSearch = () => {
-    setSearchPlate('');
-    setSearchResult(null);
-    setShowSearchResult(false);
-    setSuggestions([]);
-    setShowSuggestions(false);
-    setSelectedIndex(-1);
-  };
 
   // Закрытие выпадающего списка при клике вне
   useEffect(() => {
