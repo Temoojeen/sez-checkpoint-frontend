@@ -9,7 +9,7 @@ interface Props {
 
 export default function WebRTCPlayer({
   cameraId = "camera1",
-  server = "http://10.24.32.31:8889"
+  server = "http://kpp1.sezkhorgos.kz:8889"
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
 

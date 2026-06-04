@@ -92,6 +92,9 @@ class UserService {
       return [];
     }
   }
+  async hardDelete(id: string): Promise<void> {
+  await api.delete(`/admin/users/${id}/hard`);
+}
 
   async getMyListPermissions(): Promise<AccessList[]> {
     try {

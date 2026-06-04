@@ -33,7 +33,6 @@ export default function UsersPage() {
     inactive: 0,
   });
 
-  // Проверка роли
   useEffect(() => {
     if (user && user.roleId !== 1) {
       router.push('/');
@@ -41,7 +40,6 @@ export default function UsersPage() {
     }
   }, [user, router]);
 
-  // Загрузка данных
   useEffect(() => {
     if (user && user.roleId === 1) {
       fetchData();
@@ -60,7 +58,6 @@ export default function UsersPage() {
       setUsers(usersData);
       setOrganizations(orgsData);
       
-      // Подсчет статистики
       const newStats = {
         total: usersData.length,
         admins: usersData.filter(u => u.roleId === 1).length,
@@ -81,14 +78,26 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Вы уверены, что хотите удалить пользователя "${name}"?`)) {
+  const handleToggleActive = async (id: string, isActive: boolean, name: string) => {
+    try {
+      await userService.update(id, { isActive: !isActive });
+      console.log(name)
+      toast.success(`Пользователь ${!isActive ? 'активирован' : 'деактивирован'}`);
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      toast.error('Ошибка при изменении статуса');
+    }
+  };
+
+  const handleHardDelete = async (id: string, name: string) => {
+    if (window.confirm(`Вы уверены, что хотите ПОЛНОСТЬЮ удалить пользователя "${name}"?\n\nЭто действие нельзя отменить.`)) {
       try {
-        await userService.delete(id);
-        toast.success('Пользователь удален');
+        await userService.hardDelete(id);
+        toast.success('Пользователь полностью удален');
         fetchData();
       } catch (error: unknown) {
-        console.error('Error deleting user:', error);
+        console.error('Error hard deleting user:', error);
         if (error && typeof error === 'object' && 'response' in error) {
           const apiError = error as ApiError;
           toast.error(apiError.response?.data?.error || 'Ошибка при удалении');
@@ -112,7 +121,6 @@ export default function UsersPage() {
   };
 
   const filteredUsers = users.filter(user => {
-    // Поиск по тексту
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       const matchesSearch = 
@@ -124,15 +132,12 @@ export default function UsersPage() {
       if (!matchesSearch) return false;
     }
     
-    // Фильтр по роли
     if (roleFilter !== 'all' && user.roleId !== roleFilter) return false;
     
-    // Фильтр по организации
     if (orgFilter !== 'all' && user.organizationId !== orgFilter) return false;
     
     return true;
   });
-
 
   if (loading) {
     return (
@@ -147,32 +152,9 @@ export default function UsersPage() {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Управление пользователями</h1>
-            <p className={styles.subtitle}>
-              Просмотр и управление пользователями системы
-            </p>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge} style={{ backgroundColor: '#8b5cf620', color: '#8b5cf6' }}>
-              Администратор
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
-<Header role='admin'/>
+      <Header role='admin'/>
+
       <main className={styles.main}>
-        {/* Статистика */}
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
             <div className={styles.statIcon} style={{ backgroundColor: '#dbeafe', color: '#2563eb' }}>
@@ -203,21 +185,8 @@ export default function UsersPage() {
               <p className={styles.statValue}>{stats.inactive}</p>
             </div>
           </div>
-          
-          {/* <div className={styles.statCard}>
-            <div className={styles.statIcon} style={{ backgroundColor: '#fef3c7', color: '#d97706' }}>
-              <i className="ri-group-line"></i>
-            </div>
-            <div className={styles.statInfo}>
-              <p className={styles.statLabel}>По ролям</p>
-              <p className={styles.statValue}>
-                A:{stats.admins} O:{stats.operators} P:{stats.participants}
-              </p>
-            </div>
-          </div> */}
         </div>
 
-        {/* Фильтры */}
         <div className={styles.filtersSection}>
           <h3 className={styles.filtersTitle}>
             <i className="ri-filter-3-line"></i>
@@ -284,7 +253,6 @@ export default function UsersPage() {
           )}
         </div>
 
-        {/* Таблица пользователей */}
         <div className={styles.tableContainer}>
           {filteredUsers.length > 0 ? (
             <table className={styles.table}>
@@ -376,9 +344,16 @@ export default function UsersPage() {
                             <i className="ri-pencil-line"></i>
                           </Link>
                           <button
-                            onClick={() => handleDelete(userItem.id, userItem.fullName)}
+                            onClick={() => handleToggleActive(userItem.id, userItem.isActive, userItem.fullName)}
+                            className={`${styles.actionButton} ${userItem.isActive ? styles.warnButton : styles.successButton}`}
+                            title={userItem.isActive ? 'Деактивировать' : 'Активировать'}
+                          >
+                            <i className={userItem.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'}></i>
+                          </button>
+                          <button
+                            onClick={() => handleHardDelete(userItem.id, userItem.fullName)}
                             className={`${styles.actionButton} ${styles.deleteButton}`}
-                            title="Удалить"
+                            title="Удалить полностью"
                           >
                             <i className="ri-delete-bin-line"></i>
                           </button>
@@ -411,7 +386,6 @@ export default function UsersPage() {
           )}
         </div>
 
-        {/* Кнопка создания нового пользователя */}
         <div style={{ marginTop: '2rem', textAlign: 'right' }}>
           <Link href="/admin/users/new" className={styles.createButton}>
             <i className="ri-user-add-line"></i>

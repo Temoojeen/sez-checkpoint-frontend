@@ -31,18 +31,28 @@ export default function OrganizationsPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Вы уверены, что хотите удалить организацию "${name}"?`)) {
-      try {
-        await organizationService.delete(id);
-        toast.success('Организация удалена');
-        fetchOrganizations();
-      } catch (error) {
-        console.error('Error deleting organization:', error);
-        toast.error('Ошибка при удалении организации');
-      }
+const handleDelete = async (id: string, name: string) => {
+  const reason = window.prompt(
+    `Вы собираетесь удалить организацию "${name}".\n\nЭто действие нельзя отменить. Будут удалены:\n- Все номера организации\n- Все заявки организации\n- Все договоры организации\n- Пользователи будут отвязаны от организации\n\nВведите причину удаления:`,
+    ''
+  );
+
+  if (!reason || reason.trim() === '') {
+    toast.error('Удаление отменено. Необходимо указать причину.');
+    return;
+  }
+
+  if (window.confirm(`Причина: "${reason}"\n\nВы уверены, что хотите удалить организацию "${name}"?`)) {
+    try {
+      await organizationService.delete(id);
+      toast.success('Организация удалена');
+      fetchOrganizations();
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+      toast.error('Ошибка при удалении организации');
     }
-  };
+  }
+};
 
   const filteredOrganizations = organizations?.filter(org =>
     org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -4,15 +4,30 @@ import { usePathname, useRouter } from 'next/navigation';
 import styles from './Header.module.css';
 import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
+
 interface HeaderProps {
   role: string;
 }
+
 const Header: React.FC<HeaderProps> = ({ role }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false); // 👈 добавляем стейт
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  // 👇 Отслеживаем размер экрана безопасно
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,7 +37,6 @@ const Header: React.FC<HeaderProps> = ({ role }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-
   const handleLogout = async () => {
     if (logout) {
       await logout();
@@ -31,14 +45,27 @@ const Header: React.FC<HeaderProps> = ({ role }) => {
     }
   };
 
-  const userDisplayName = user?.username || user?.username || '123';
+  const userDisplayName = user?.username || 'Гость';
 
   const isActiveLink = (path: string) => {
     return pathname === path;
   };
 
+  const showMyNumbersLink = role === "operator" || role === "participant";
+  const myNumbersHref = role === "participant" ? "/participant/lists" : "/operator/lists";
+
   return (
     <header className={`${styles.header} ${isScrolled ? styles.scrolled : ''}`}>
+      {/* 👇 Используем isMobile из стейта */}
+      {showMyNumbersLink && !isMobile && (
+        <Link
+          href={myNumbersHref}
+          className={`${styles.myNumbersLink} ${isActiveLink(myNumbersHref) ? styles.activeLink : ''}`}
+        >
+          Мои номера
+        </Link>
+      )}
+
       {/* Video Background */}
       <div className={styles.videoBackground}>
         <video 
@@ -49,24 +76,8 @@ const Header: React.FC<HeaderProps> = ({ role }) => {
           className={styles.video}
         >
           <source src="/assets/videos/3.mp4" type="video/mp4" />
-          {/* Fallback for browsers that don't support video */}
-          <div className={styles.fallback}></div>
         </video>
         <div className={styles.overlay}></div>
-            {(role === "operator" || role === "participant") && (
-              <li>
-                <Link
-                  href={role === "participant" ? "/participant/lists" : "/operator/lists"}
-                  className={`${styles.navLink} ${
-                    isActiveLink(role === "participant" ? "/participant/lists" : "/operator/lists")
-                      ? styles.activeLink
-                      : ""
-                  }`}
-                >
-                  Мои номера
-                </Link>
-              </li>
-            )}
       </div>
 
       <div className={styles.container}>
@@ -74,20 +85,33 @@ const Header: React.FC<HeaderProps> = ({ role }) => {
         <div className={styles.logo}>
           <Link href="/" className={styles.logoText}>
             <Image
-  src="/assets/images/logo.png"
-  alt="Logo" // Provide a meaningful alt text for accessibility
-  className={styles.logo_img}
-  width={100} // Required: specify the image width in pixels
-  height={100} // Required: specify the image height in pixels
-/>
+              src="/assets/images/logo.png"
+              alt="Логотип компании"
+              className={styles.logo_img}
+              width={100}
+              height={100}
+              priority
+            />
           </Link>
         </div>
 
-        {/* Rest of your header content remains the same */}
+        {/* Навигация */}
         <nav className={`${styles.nav} ${isMenuOpen ? styles.active : ''}`}>
           <ul className={styles.navList}>
+            {/* 👇 Используем isMobile из стейта */}
+            {showMyNumbersLink && isMobile && (
+              <li>
+                <Link
+                  href={myNumbersHref}
+                  className={`${styles.navLink} ${isActiveLink(myNumbersHref) ? styles.activeLink : ''}`}
+                >
+                  Мои номера
+                </Link>
+              </li>
+            )}
           </ul>
 
+          {/* Секция пользователя */}
           <div className={styles.userSection}>
             <div className={styles.userInfo}>
               <div className={styles.userAvatar}>
@@ -102,8 +126,8 @@ const Header: React.FC<HeaderProps> = ({ role }) => {
             <button
               onClick={handleLogout}
               className={styles.logoutButton}
-              aria-label="Logout"
-              >
+              aria-label="Выйти из системы"
+            >
               <svg className={styles.logoutIcon} viewBox="0 0 24 24" fill="none">
                 <path
                   d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
@@ -111,19 +135,20 @@ const Header: React.FC<HeaderProps> = ({ role }) => {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  />
+                />
               </svg>
               <span>Выйти</span>
             </button>
           </div>
         </nav>
 
-        {/* Mobile Menu Button */}
+        {/* Кнопка мобильного меню */}
         <button
           className={`${styles.menuButton} ${isMenuOpen ? styles.active : ''}`}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label="Toggle menu"
-          >
+          aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+          aria-expanded={isMenuOpen}
+        >
           <span className={styles.menuIcon}></span>
         </button>
       </div>

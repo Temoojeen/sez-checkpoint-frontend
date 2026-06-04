@@ -116,35 +116,48 @@ export default function SecurityPage() {
   const isInitializedRef = useRef(false);
   const timeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-// Функция поиска похожих номеров
-const searchSimilarPlates = async (query: string) => {
-  if (query.length < 3) {
-    setSuggestions([]);
-    setShowSuggestions(false);
-    return;
-  }
+  // Функция поиска похожих номеров
+  const searchSimilarPlates = async (query: string) => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
 
-  try {
-    const token = Cookies.get('token');
-    if (!token) return;
+    try {
+      const token = Cookies.get('token');
+      if (!token) return;
 
-    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://10.24.32.31/api';
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
 
-    const response = await fetch(`${baseURL}/security/search-plates?q=${encodeURIComponent(query)}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+      const response = await fetch(`${baseURL}/security/search-plates?q=${encodeURIComponent(query)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-    if (response.ok) {
-      const data: SearchSuggestion[] = await response.json();
-      // Проверяем что data существует и является массивом
-      if (data && Array.isArray(data)) {
-        setSuggestions(data);
-        setShowSuggestions(data.length > 0);
-        
-        // Если похожих номеров нет - показываем оверлей
-        if (data.length === 0) {
+      if (response.ok) {
+        const data: SearchSuggestion[] = await response.json();
+        if (data && Array.isArray(data)) {
+          setSuggestions(data);
+          setShowSuggestions(data.length > 0);
+          
+          if (data.length === 0) {
+            setOverlayMessage({
+              title: "Похожих номеров не найдено",
+              listColor: '#ef4444',
+              listName: '',
+              plateNumber: query,
+              organizationName: '',
+              isActive: false,
+            });
+            setShowOverlay(true);
+            setTimeout(() => setShowOverlay(false), 3000);
+          }
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
+          
           setOverlayMessage({
             title: "Похожих номеров не найдено",
             listColor: '#ef4444',
@@ -159,29 +172,13 @@ const searchSimilarPlates = async (query: string) => {
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
-        
-        // Показываем оверлей что ничего не найдено
-        setOverlayMessage({
-          title: "Похожих номеров не найдено",
-          listColor: '#ef4444',
-          listName: '',
-          plateNumber: query,
-          organizationName: '',
-          isActive: false,
-        });
-        setShowOverlay(true);
-        setTimeout(() => setShowOverlay(false), 3000);
       }
-    } else {
+    } catch (error) {
+      console.error('Error searching plates:', error);
       setSuggestions([]);
       setShowSuggestions(false);
     }
-  } catch (error) {
-    console.error('Error searching plates:', error);
-    setSuggestions([]);
-    setShowSuggestions(false);
-  }
-};
+  };
 
   // Функция для ручной проверки номера
   const handleManualCheck = async (plateNumber: string) => {
@@ -196,7 +193,7 @@ const searchSimilarPlates = async (query: string) => {
       const token = Cookies.get('token');
       if (!token) return;
 
-      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://10.24.32.31/api';
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
 
       const response = await fetch(`${baseURL}/security/check-plate/${encodeURIComponent(plateNumber.trim().toUpperCase())}`, {
         headers: {
@@ -209,16 +206,26 @@ const searchSimilarPlates = async (query: string) => {
         setSearchResult(data);
         setShowSearchResult(true);
 
-        // Показываем оверлей с результатом
         if (data.exists) {
-          setOverlayMessage({
-            title: data.isActive ? "Доступ разрешен" : "Номер неактивен",
-            listColor: data.listColor || (data.exists ? '#10b981' : '#ef4444'),
-            listName: data.listName || '',
-            plateNumber: plateNumber.trim().toUpperCase(),
-            organizationName: data.organizationName || '',
-            isActive: data.isActive || false,
-          });
+          if (data.organizationName) {
+            setOverlayMessage({
+              title: data.isActive ? "Доступ разрешен" : "Номер неактивен",
+              listColor: data.listColor || (data.exists ? '#10b981' : '#ef4444'),
+              listName: data.listName || '',
+              plateNumber: plateNumber.trim().toUpperCase(),
+              organizationName: data.organizationName || '',
+              isActive: data.isActive || false,
+            });
+          } else {
+            setOverlayMessage({
+              title: "Нет организации",
+              listColor: data.listColor || '#f59e0b',
+              listName: data.listName || '',
+              plateNumber: plateNumber.trim().toUpperCase(),
+              organizationName: '',
+              isActive: data.isActive || false,
+            });
+          }
           setShowOverlay(true);
           setTimeout(() => setShowOverlay(false), 4000);
         } else {
@@ -233,7 +240,6 @@ const searchSimilarPlates = async (query: string) => {
           setShowOverlay(true);
           setTimeout(() => setShowOverlay(false), 3000);
         }
-
       } else {
         toast.error('Ошибка при проверке номера');
       }
@@ -273,49 +279,47 @@ const searchSimilarPlates = async (query: string) => {
     handleManualCheck(suggestion.plateNumber);
   };
 
-const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-  if (!showSuggestions || suggestions.length === 0) return;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
 
-  switch (e.key) {
-    case 'ArrowDown':
-      e.preventDefault();
-      setSelectedIndex(prev =>
-        prev < suggestions.length - 1 ? prev + 1 : prev
-      );
-      break;
-    case 'ArrowUp':
-      e.preventDefault();
-      setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
-      break;
-    case 'Enter':
-      if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+    switch (e.key) {
+      case 'ArrowDown':
         e.preventDefault();
-        handleSelectSuggestion(suggestions[selectedIndex]);
-      } else {
-        // Создаем синтетическое событие формы
-        const form = e.currentTarget.closest('form');
-        if (form) {
-          const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-          form.dispatchEvent(submitEvent);
+        setSelectedIndex(prev =>
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+          e.preventDefault();
+          handleSelectSuggestion(suggestions[selectedIndex]);
+        } else {
+          const form = e.currentTarget.closest('form');
+          if (form) {
+            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+            form.dispatchEvent(submitEvent);
+          }
         }
-      }
-      break;
-    case 'Escape':
-      setShowSuggestions(false);
+        break;
+      case 'Escape':
+        setShowSuggestions(false);
+        setSuggestions([]);
+        break;
+    }
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (searchPlate.trim()) {
+      handleManualCheck(searchPlate);
       setSuggestions([]);
-      break;
-  }
-};
-
-const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  if (searchPlate.trim()) {
-    handleManualCheck(searchPlate);
-    setSuggestions([]);
-    setShowSuggestions(false);
-  }
-};
-
+      setShowSuggestions(false);
+    }
+  };
 
   // Закрытие выпадающего списка при клике вне
   useEffect(() => {
@@ -334,7 +338,7 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     try {
       const token = Cookies.get('token');
       if (!token) return;
-      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://10.24.32.31/api';
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
 
       const response = await fetch(baseURL + '/security/recent-logs', {
         headers: {
@@ -376,7 +380,7 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 
   const loadTodayStats = useCallback(async () => {
     try {
-      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://10.24.32.31/api';
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
 
       const response = await fetch(baseURL + '/security/statistics', {
         headers: {
@@ -416,9 +420,9 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     try {
       const audio = new Audio();
       if (type === 'granted') {
-        audio.src = '/sounds/access-granted.mp3';
+        audio.src = '/assets/sounds/granted.mp3';
       } else {
-        audio.src = '/sounds/access-denied.mp3';
+        audio.src = '/assets/sounds/denied.mp3';
       }
       audio.volume = 0.5;
       audio.play().catch(e => console.log('Audio play failed:', e));
@@ -427,87 +431,131 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     }
   }, []);
 
-  const handlePlateDetection = useCallback((data: WebSocketMessage) => {
-    const { plateNumber, accessGranted, organizationName, listName, listColor, message, timestamp } = data;
+  // Функция для озвучки текста
+const speakText = useCallback((text: string) => {
+  try {
+    // Отменяем предыдущую озвучку если есть
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ru-RU';
+    utterance.rate = 0.9; // Скорость (0.1 - 10)
+    utterance.pitch = 1; // Тон голоса
+    utterance.volume = 0.8;
+    
+    // Выбираем русский голос
+    const voices = window.speechSynthesis.getVoices();
+    const russianVoice = voices.find(voice => voice.lang.startsWith('ru'));
+    if (russianVoice) {
+      utterance.voice = russianVoice;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+  } catch (error) {
+    console.log('Speech synthesis not supported:', error);
+  }
+}, []);
 
-    let status: 'granted' | 'denied' | 'unknown' = 'unknown';
-    let isActive = true;
-    let title = "";
-    let color = listColor || "#f59e0b";
+const handlePlateDetection = useCallback((data: WebSocketMessage) => {
+  const { plateNumber, accessGranted, organizationName, listName, listColor, message, timestamp } = data;
 
-    if (accessGranted) {
-      status = 'granted';
-      isActive = true;
+  let status: 'granted' | 'denied' | 'unknown' = 'unknown';
+  let isActive = true;
+  let title = "";
+  let color = listColor || "#f59e0b";
+
+  if (accessGranted) {
+    status = 'granted';
+    isActive = true;
+    
+    if (organizationName) {
       title = "Машина опознана";
       color = listColor || '#10b981';
     } else {
-      status = 'denied';
-      isActive = false;
-      title = "Машины нет в списках";
-      color = listColor || '#ef4444';
+      title = "Нет организации";
+      color = listColor || '#f59e0b';
     }
+  } else {
+    status = 'denied';
+    isActive = false;
+    title = "Машины нет в списках";
+    color = listColor || '#ef4444';
+  }
 
-    let logTimestamp: Date;
-    if (timestamp) {
-      logTimestamp = new Date(timestamp);
-    } else {
-      logTimestamp = getCurrentTimestamp();
-    }
+  let logTimestamp: Date;
+  if (timestamp) {
+    logTimestamp = new Date(timestamp);
+  } else {
+    logTimestamp = getCurrentTimestamp();
+  }
 
-    const newLog: AccessLog = {
-      id: generateUniqueId(),
+  const newLog: AccessLog = {
+    id: generateUniqueId(),
+    plateNumber: plateNumber,
+    organizationName: organizationName,
+    listName: listName,
+    listColor: listColor,
+    timestamp: logTimestamp,
+    status: status,
+    isActive: isActive,
+    message: message,
+  };
+
+  startTransition(() => {
+    setRecentLogs(prev => [newLog, ...prev].slice(0, 5));
+  });
+
+  startTransition(() => {
+    setStats(prev => ({
+      today: prev.today + 1,
+      granted: prev.granted + (accessGranted ? 1 : 0),
+      denied: prev.denied + (!accessGranted ? 1 : 0),
+      unknown: prev.unknown,
+    }));
+  });
+
+  startTransition(() => {
+    setOverlayMessage({
+      title: title,
+      listColor: color,
+      listName: listName || '',
       plateNumber: plateNumber,
-      organizationName: organizationName,
-      listName: listName,
-      listColor: listColor,
-      timestamp: logTimestamp,
-      status: status,
+      organizationName: organizationName || '',
       isActive: isActive,
-      message: message,
-    };
-
-    startTransition(() => {
-      setRecentLogs(prev => [newLog, ...prev].slice(0, 5));
     });
+  });
 
+  startTransition(() => {
+    setShowOverlay(true);
+  });
+
+  // Звуковое оповещение
+  if (accessGranted) {
+    playSound('granted');
+  } else {
+    playSound('denied');
+  }
+
+// Голосовое оповещение
+const statusText = isActive ? 'активный' : 'неактивный';
+
+let voiceMessage = '';
+if (accessGranted) {
+  // Разбиваем номер на отдельные символы для произношения
+  const plateChars = plateNumber.split('').join(' ');
+  voiceMessage = `Номер ${plateChars}. ${statusText}`;
+} else {
+  voiceMessage = `Номер не найден`;
+}
+
+speakText(voiceMessage);
+
+  setTimeout(() => {
     startTransition(() => {
-      setStats(prev => {
-        return {
-          today: prev.today + 1,
-          granted: prev.granted + (accessGranted ? 1 : 0),
-          denied: prev.denied + (!accessGranted ? 1 : 0),
-          unknown: prev.unknown,
-        };
-      });
+      setShowOverlay(false);
     });
-
-    startTransition(() => {
-      setOverlayMessage({
-        title: title,
-        listColor: color,
-        listName: listName || '',
-        plateNumber: plateNumber,
-        organizationName: organizationName || '',
-        isActive: isActive,
-      });
-    });
-
-    startTransition(() => {
-      setShowOverlay(true);
-    });
-
-    setTimeout(() => {
-      startTransition(() => {
-        setShowOverlay(false);
-      });
-    }, 4000);
-
-    if (accessGranted) {
-      playSound('granted');
-    } else {
-      playSound('denied');
-    }
-  }, [playSound, startTransition]);
+  }, 4000);
+}, [playSound, speakText, startTransition]);
 
   // Проверка прав доступа
   useEffect(() => {
@@ -569,9 +617,9 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     let wsUrl: string;
 
     if (typeof window !== 'undefined') {
-      wsUrl = process.env.NEXT_PUBLIC_WS_URL || `ws://10.24.32.31:8080/ws`;
+      wsUrl = process.env.NEXT_PUBLIC_WS_URL || `ws://kpp1.sezkhorgos.kz:8080/ws`;
     } else {
-      wsUrl = `ws://10.24.32.31:8080/ws`;
+      wsUrl = `ws://kpp1.sezkhorgos.kz:8080/ws`;
     }
 
     let ws: WebSocket | null = null;
@@ -677,11 +725,14 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     }
   };
 
-  const getStatusText = (status: 'granted' | 'denied' | 'unknown') => {
+  const getStatusText = (status: 'granted' | 'denied' | 'unknown', organizationName?: string) => {
     switch (status) {
-      case 'granted': return 'Доступ разрешен';
-      case 'denied': return 'Номер неактивен';
-      case 'unknown': return 'Неопознанная машина';
+      case 'granted': 
+        return organizationName ? 'Доступ разрешен' : 'Требует внимания';
+      case 'denied': 
+        return 'Доступ запрещен';
+      case 'unknown': 
+        return 'Неопознанная машина';
     }
   };
 
@@ -734,22 +785,38 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
               <div className={styles.overlayTitle} style={{ color: overlayMessage.listColor }}>
                 {overlayMessage.title}
               </div>
-              {overlayMessage.organizationName && (
-                <div className={styles.overlayOrg}>
-                  <i className="ri-building-4-line"></i>
-                  {overlayMessage.organizationName}
-                </div>
-              )}
+              
+              {/* Показываем номер машины всегда */}
               <div className={styles.overlayPlate}>
                 <i className="ri-car-line"></i>
                 {overlayMessage.plateNumber}
               </div>
+              
+              {/* Показываем организацию, если есть */}
+              {overlayMessage.organizationName ? (
+                <div className={styles.overlayOrg}>
+                  <i className="ri-building-4-line"></i>
+                  {overlayMessage.organizationName}
+                </div>
+              ) : (
+                /* Если нет организации, но номер в списке - показываем предупреждение */
+                overlayMessage.title !== "Машины нет в списках" && overlayMessage.title !== "Номер не найден" && (
+                  <div className={styles.overlayOrg} style={{ color: '#f59e0b' }}>
+                    <i className="ri-alert-line"></i>
+                    Организация не указана
+                  </div>
+                )
+              )}
+              
+              {/* Показываем список, если есть */}
               {overlayMessage.listName && (
                 <div className={styles.overlayList} style={{ color: overlayMessage.listColor }}>
                   <i className="ri-list-check-3"></i>
                   {overlayMessage.listName}
                 </div>
               )}
+              
+              {/* Предупреждение для неактивных номеров */}
               {!overlayMessage.isActive && overlayMessage.listName && (
                 <div className={styles.overlayWarning}>
                   <i className="ri-alert-line"></i>
@@ -856,11 +923,18 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
                         </span>
                       </div>
 
-                      {searchResult.organizationName && (
+                      {searchResult.organizationName ? (
                         <div className={styles.searchResultRow}>
                           <i className="ri-building-4-line"></i>
                           <span>{searchResult.organizationName}</span>
                         </div>
+                      ) : (
+                        searchResult.exists && (
+                          <div className={styles.searchResultRow} style={{ color: '#f59e0b' }}>
+                            <i className="ri-alert-line"></i>
+                            <span>Организация не указана</span>
+                          </div>
+                        )
                       )}
 
                       {searchResult.listName && (
@@ -927,57 +1001,61 @@ const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
                             {getStatusIcon(log.status)}
                           </div>
 
-                          {log.status === 'granted' ? (
-                            <div className={styles.logDetails}>
-                              <div className={styles.detailRow}>
-                                <i className="ri-building-4-line"></i>
-                                <span>{log.organizationName || 'Неизвестная организация'}</span>
-                              </div>
-                              <div className={styles.detailRow}>
-                                <i className="ri-list-check-3"></i>
-                                <span style={{ color: listColor }}>
-                                  {log.listName || 'Неизвестный список'}
-                                </span>
-                              </div>
+                          <div className={styles.logDetails}>
+                            {/* Организация */}
+                            <div className={styles.detailRow}>
+                              <i className={log.organizationName ? "ri-building-4-line" : "ri-alert-line"} 
+                                 style={{ color: log.organizationName ? 'inherit' : '#f59e0b' }}></i>
+                              <span style={{ color: log.organizationName ? 'inherit' : '#f59e0b' }}>
+                                {log.organizationName || 'Организация не указана'}
+                              </span>
                             </div>
-                          ) : log.status === 'denied' ? (
-                            <div className={styles.logDetails}>
-                              <div className={styles.detailRow}>
-                                <i className="ri-error-warning-line" style={{ color: '#f59e0b' }}></i>
-                                <span>{log.organizationName || 'Неизвестная организация'}</span>
-                              </div>
+                            
+                            {/* Список */}
+                            {log.listName && (
                               <div className={styles.detailRow}>
                                 <i className="ri-list-check-3"></i>
                                 <span style={{ color: listColor }}>
-                                  {log.listName || 'Неизвестный список'}
+                                  {log.listName}
                                 </span>
                               </div>
+                            )}
+                            
+                            {/* Статус активности */}
+                            {log.status === 'denied' && log.listName && (
                               <div className={styles.detailRow}>
                                 <i className="ri-alert-line"></i>
-                                <span className={styles.warningText}>Номер неактивен</span>
+                                <span className={styles.warningText}>
+                                  Номер неактивен
+                                </span>
                               </div>
-                            </div>
-                          ) : log.status === 'unknown' ? (
-                            <div className={styles.logDetails}>
+                            )}
+                            
+                            {/* Предупреждение если нет организации но номер в списке */}
+                            {log.status === 'granted' && !log.organizationName && (
                               <div className={styles.detailRow}>
-                                <i className="ri-error-warning-line" style={{ color: '#ef4444' }}></i>
-                                <span>Неопознанная машина</span>
+                                <i className="ri-error-warning-line" style={{ color: '#f59e0b' }}></i>
+                                <span className={styles.warningText}>
+                                  Номер в списке, но нет организации
+                                </span>
                               </div>
-                              {log.message && (
-                                <div className={styles.detailRow}>
-                                  <i className="ri-information-line"></i>
-                                  <span className={styles.logMessage}>{log.message}</span>
-                                </div>
-                              )}
-                            </div>
-                          ) : null}
+                            )}
+                            
+                            {/* Сообщение от системы */}
+                            {log.message && (
+                              <div className={styles.detailRow}>
+                                <i className="ri-information-line"></i>
+                                <span className={styles.logMessage}>{log.message}</span>
+                              </div>
+                            )}
+                          </div>
 
                           <div className={styles.logFooter}>
                             <span className={styles.logTime}>
                               {formatDateTime(log.timestamp.toISOString())}
                             </span>
                             <span className={styles.logStatus} style={{ color: statusColor }}>
-                              {getStatusText(log.status)}
+                              {getStatusText(log.status, log.organizationName)}
                             </span>
                           </div>
                         </div>

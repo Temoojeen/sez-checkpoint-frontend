@@ -52,6 +52,7 @@
 
 /* ===== БАЗА ===== */
 .container {
+  padding-top: 100px;
   min-height: 100vh;
   background: url('/assets/images/3.png') center/cover no-repeat;
   position: relative;
