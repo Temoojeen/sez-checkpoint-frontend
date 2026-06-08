@@ -69,7 +69,9 @@ class ApplicationService {
     const response = await api.get<Application[]>('/applications/my');
     return response.data || [];
   }
-
+async deleteMyApplication(id: string): Promise<void> {
+  await api.delete(`/applications/${id}`);
+}
   // Общий эндпоинт для получения заявки по ID
   async getById(id: string): Promise<Application> {
     const response = await api.get<Application>(`/applications/${id}`);

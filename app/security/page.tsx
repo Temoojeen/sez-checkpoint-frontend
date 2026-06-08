@@ -98,13 +98,11 @@ export default function SecurityPage() {
   const [wsConnected, setWsConnected] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  // Состояния для ручного поиска номера
   const [searchPlate, setSearchPlate] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<CheckPlateResponse | null>(null);
   const [showSearchResult, setShowSearchResult] = useState(false);
 
-  // Состояния для автодополнения
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -115,137 +113,95 @@ export default function SecurityPage() {
   const logIdCounterRef = useRef<number>(0);
   const isInitializedRef = useRef(false);
   const timeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [similarPlates, setSimilarPlates] = useState<SearchSuggestion[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
 
-  // Функция поиска похожих номеров
-  const searchSimilarPlates = async (query: string) => {
-    if (query.length < 3) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
+  const loadSimilarPlates = useCallback(async (plateNumber: string) => {
+    if (!plateNumber || plateNumber.length < 3) return;
+    setSimilarLoading(true);
     try {
       const token = Cookies.get('token');
       if (!token) return;
-
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
-
-      const response = await fetch(`${baseURL}/security/search-plates?q=${encodeURIComponent(query)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const cleanPlate = plateNumber.replace(/\s/g, '').toUpperCase();
+      // Ищем по первым 3 символам для большего охвата
+const searchQuery = cleanPlate.length >= 3 ? cleanPlate.slice(0, 3) : cleanPlate;
+      const response = await fetch(`${baseURL}/security/search-plates?q=${encodeURIComponent(searchQuery)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (response.ok) {
+        const data: SearchSuggestion[] = await response.json();
+        setSimilarPlates(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading similar plates:', error);
+    } finally {
+      setSimilarLoading(false);
+    }
+  }, []);
 
+  const searchSimilarPlates = async (query: string) => {
+    if (query.length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    try {
+      const token = Cookies.get('token');
+      if (!token) return;
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
+      const response = await fetch(`${baseURL}/security/search-plates?q=${encodeURIComponent(query)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data: SearchSuggestion[] = await response.json();
         if (data && Array.isArray(data)) {
           setSuggestions(data);
           setShowSuggestions(data.length > 0);
-          
-          if (data.length === 0) {
-            setOverlayMessage({
-              title: "Похожих номеров не найдено",
-              listColor: '#ef4444',
-              listName: '',
-              plateNumber: query,
-              organizationName: '',
-              isActive: false,
-            });
-            setShowOverlay(true);
-            setTimeout(() => setShowOverlay(false), 3000);
-          }
         } else {
           setSuggestions([]);
           setShowSuggestions(false);
-          
-          setOverlayMessage({
-            title: "Похожих номеров не найдено",
-            listColor: '#ef4444',
-            listName: '',
-            plateNumber: query,
-            organizationName: '',
-            isActive: false,
-          });
-          setShowOverlay(true);
-          setTimeout(() => setShowOverlay(false), 3000);
         }
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
       }
     } catch (error) {
-      console.error('Error searching plates:', error);
       setSuggestions([]);
       setShowSuggestions(false);
+      console.log(error)
     }
   };
 
-  // Функция для ручной проверки номера
   const handleManualCheck = async (plateNumber: string) => {
-    if (!plateNumber.trim()) {
-      setSearchResult(null);
-      setShowSearchResult(false);
-      return;
-    }
-
+    if (!plateNumber.trim()) { setSearchResult(null); setShowSearchResult(false); return; }
     try {
       setSearchLoading(true);
       const token = Cookies.get('token');
       if (!token) return;
-
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
-
       const response = await fetch(`${baseURL}/security/check-plate/${encodeURIComponent(plateNumber.trim().toUpperCase())}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (response.ok) {
         const data: CheckPlateResponse = await response.json();
         setSearchResult(data);
         setShowSearchResult(true);
-
         if (data.exists) {
-          if (data.organizationName) {
-            setOverlayMessage({
-              title: data.isActive ? "Доступ разрешен" : "Номер неактивен",
-              listColor: data.listColor || (data.exists ? '#10b981' : '#ef4444'),
-              listName: data.listName || '',
-              plateNumber: plateNumber.trim().toUpperCase(),
-              organizationName: data.organizationName || '',
-              isActive: data.isActive || false,
-            });
-          } else {
-            setOverlayMessage({
-              title: "Нет организации",
-              listColor: data.listColor || '#f59e0b',
-              listName: data.listName || '',
-              plateNumber: plateNumber.trim().toUpperCase(),
-              organizationName: '',
-              isActive: data.isActive || false,
-            });
-          }
+          setOverlayMessage({
+            title: data.organizationName ? (data.isActive ? "Доступ разрешен" : "Номер неактивен") : "Нет организации",
+            listColor: data.listColor || (data.exists ? '#10b981' : '#f59e0b'),
+            listName: data.listName || '',
+            plateNumber: plateNumber.trim().toUpperCase(),
+            organizationName: data.organizationName || '',
+            isActive: data.isActive || false,
+          });
           setShowOverlay(true);
           setTimeout(() => setShowOverlay(false), 4000);
         } else {
-          setOverlayMessage({
-            title: "Номер не найден",
-            listColor: '#ef4444',
-            listName: '',
-            plateNumber: plateNumber.trim().toUpperCase(),
-            organizationName: '',
-            isActive: false,
-          });
+          setOverlayMessage({ title: "Номер не найден", listColor: '#ef4444', listName: '', plateNumber: plateNumber.trim().toUpperCase(), organizationName: '', isActive: false });
           setShowOverlay(true);
           setTimeout(() => setShowOverlay(false), 3000);
         }
-      } else {
-        toast.error('Ошибка при проверке номера');
       }
     } catch (error) {
-      console.error('Error checking plate:', error);
-      toast.error('Ошибка при проверке номера');
+      toast.error('Ошибка при проверке номера',error);
     } finally {
       setSearchLoading(false);
     }
@@ -257,15 +213,9 @@ export default function SecurityPage() {
     setSearchResult(null);
     setShowSearchResult(false);
     setSelectedIndex(-1);
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     if (value.length >= 3) {
-      searchTimeoutRef.current = setTimeout(() => {
-        searchSimilarPlates(value);
-      }, 300);
+      searchTimeoutRef.current = setTimeout(() => searchSimilarPlates(value), 300);
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -281,824 +231,281 @@ export default function SecurityPage() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showSuggestions || suggestions.length === 0) return;
-
     switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev =>
-          prev < suggestions.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
-        break;
+      case 'ArrowDown': e.preventDefault(); setSelectedIndex(prev => prev < suggestions.length - 1 ? prev + 1 : prev); break;
+      case 'ArrowUp': e.preventDefault(); setSelectedIndex(prev => prev > 0 ? prev - 1 : -1); break;
       case 'Enter':
-        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-          e.preventDefault();
-          handleSelectSuggestion(suggestions[selectedIndex]);
-        } else {
-          const form = e.currentTarget.closest('form');
-          if (form) {
-            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-            form.dispatchEvent(submitEvent);
-          }
-        }
+        if (selectedIndex >= 0 && selectedIndex < suggestions.length) { e.preventDefault(); handleSelectSuggestion(suggestions[selectedIndex]); }
+        else { const form = e.currentTarget.closest('form'); if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); }
         break;
-      case 'Escape':
-        setShowSuggestions(false);
-        setSuggestions([]);
-        break;
+      case 'Escape': setShowSuggestions(false); setSuggestions([]); break;
     }
   };
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (searchPlate.trim()) {
-      handleManualCheck(searchPlate);
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
+    if (searchPlate.trim()) { handleManualCheck(searchPlate); setSuggestions([]); setShowSuggestions(false); }
   };
 
-  // Закрытие выпадающего списка при клике вне
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) setShowSuggestions(false);
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Функции загрузки данных
   const loadRecentLogs = useCallback(async () => {
     try {
       const token = Cookies.get('token');
       if (!token) return;
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
-
-      const response = await fetch(baseURL + '/security/recent-logs', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
+      const response = await fetch(baseURL + '/security/recent-logs', { headers: { 'Authorization': `Bearer ${token}` } });
       if (response.ok) {
         const logs: ApiLog[] = await response.json();
-
         if (logs && Array.isArray(logs) && logs.length > 0) {
-          const formattedLogs: AccessLog[] = logs.map((log: ApiLog) => ({
-            id: log.id,
-            plateNumber: log.plateNumber,
-            organizationName: log.organizationName,
-            listName: log.listName,
-            listColor: log.listColor,
-            timestamp: new Date(log.createdAt),
-            status: log.accessGranted ? 'granted' : 'denied' as const,
-            isActive: log.accessGranted,
-            message: log.message,
-          }));
-          startTransition(() => {
-            setRecentLogs(formattedLogs.slice(0, 5));
-          });
-        } else {
-          startTransition(() => {
-            setRecentLogs([]);
-          });
-        }
+          startTransition(() => setRecentLogs(logs.map(log => ({
+            id: log.id, plateNumber: log.plateNumber, organizationName: log.organizationName,
+            listName: log.listName, listColor: log.listColor, timestamp: new Date(log.createdAt),
+            status: log.accessGranted ? 'granted' : 'denied', isActive: log.accessGranted, message: log.message,
+          })).slice(0, 5)));
+        } else { startTransition(() => setRecentLogs([])); }
       }
-    } catch (error) {
-      console.error('Error loading logs:', error);
-      startTransition(() => {
-        setRecentLogs([]);
-      });
+    } catch (error) { startTransition(() => setRecentLogs([])); 
+      console.log(error)
     }
   }, [startTransition]);
 
   const loadTodayStats = useCallback(async () => {
     try {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://kpp1.sezkhorgos.kz/api';
-
-      const response = await fetch(baseURL + '/security/statistics', {
-        headers: {
-          'Authorization': `Bearer ${Cookies.get('token')}`
-        }
-      });
-
+      const response = await fetch(baseURL + '/security/statistics', { headers: { 'Authorization': `Bearer ${Cookies.get('token')}` } });
       if (response.ok) {
         const data: StatisticsResponse = await response.json();
-        startTransition(() => {
-          setStats({
-            today: data?.statistics?.total || 0,
-            granted: data?.statistics?.granted || 0,
-            denied: data?.statistics?.denied || 0,
-            unknown: 0,
-          });
-        });
+        startTransition(() => setStats({ today: data?.statistics?.total || 0, granted: data?.statistics?.granted || 0, denied: data?.statistics?.denied || 0, unknown: 0 }));
       }
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.log(error)
     }
   }, [startTransition]);
 
   const generateUniqueId = (): string => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
     logIdCounterRef.current += 1;
     return `${Date.now()}-${logIdCounterRef.current}`;
-  };
-
-  const getCurrentTimestamp = (): Date => {
-    return new Date();
   };
 
   const playSound = useCallback((type: 'granted' | 'denied') => {
     try {
       const audio = new Audio();
-      if (type === 'granted') {
-        audio.src = '/assets/sounds/granted.mp3';
-      } else {
-        audio.src = '/assets/sounds/denied.mp3';
-      }
+      audio.src = type === 'granted' ? '/assets/sounds/granted.mp3' : '/assets/sounds/denied.mp3';
       audio.volume = 0.5;
-      audio.play().catch(e => console.log('Audio play failed:', e));
+      audio.play().catch(() => {});
     } catch (error) {
-      console.log('Sound not supported==>', error);
+      console.log(error)
     }
   }, []);
 
-  // Функция для озвучки текста
-const speakText = useCallback((text: string) => {
-  try {
-    // Отменяем предыдущую озвучку если есть
-    window.speechSynthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ru-RU';
-    utterance.rate = 0.9; // Скорость (0.1 - 10)
-    utterance.pitch = 1; // Тон голоса
-    utterance.volume = 0.8;
-    
-    // Выбираем русский голос
-    const voices = window.speechSynthesis.getVoices();
-    const russianVoice = voices.find(voice => voice.lang.startsWith('ru'));
-    if (russianVoice) {
-      utterance.voice = russianVoice;
+  const speakText = useCallback((text: string) => {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ru-RU';
+      utterance.rate = 0.9;
+      utterance.volume = 0.8;
+      const voices = window.speechSynthesis.getVoices();
+      const russianVoice = voices.find(voice => voice.lang.startsWith('ru'));
+      if (russianVoice) utterance.voice = russianVoice;
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.log(error)
     }
-    
-    window.speechSynthesis.speak(utterance);
-  } catch (error) {
-    console.log('Speech synthesis not supported:', error);
-  }
-}, []);
+  }, []);
 
-const handlePlateDetection = useCallback((data: WebSocketMessage) => {
-  const { plateNumber, accessGranted, organizationName, listName, listColor, message, timestamp } = data;
+  const handlePlateDetection = useCallback((data: WebSocketMessage) => {
+    const { plateNumber, accessGranted, organizationName, listName, listColor, message, timestamp } = data;
+    let status: 'granted' | 'denied' | 'unknown';
+    let isActive = true;
+    let title = "";
+    let color = listColor || "#f59e0b";
 
-  let status: 'granted' | 'denied' | 'unknown' = 'unknown';
-  let isActive = true;
-  let title = "";
-  let color = listColor || "#f59e0b";
-
-  if (accessGranted) {
-    status = 'granted';
-    isActive = true;
-    
-    if (organizationName) {
-      title = "Машина опознана";
-      color = listColor || '#10b981';
+    if (accessGranted) {
+      status = 'granted';
+      title = organizationName ? "Машина опознана" : "Нет организации";
+      color = listColor || (organizationName ? '#10b981' : '#f59e0b');
     } else {
-      title = "Нет организации";
-      color = listColor || '#f59e0b';
+      status = 'denied';
+      isActive = false;
+      title = "Машины нет в списках";
+      color = '#ef4444';
     }
-  } else {
-    status = 'denied';
-    isActive = false;
-    title = "Машины нет в списках";
-    color = listColor || '#ef4444';
-  }
 
-  let logTimestamp: Date;
-  if (timestamp) {
-    logTimestamp = new Date(timestamp);
-  } else {
-    logTimestamp = getCurrentTimestamp();
-  }
+    const logTimestamp = timestamp ? new Date(timestamp) : new Date();
+    const newLog: AccessLog = { id: generateUniqueId(), plateNumber, organizationName, listName, listColor, timestamp: logTimestamp, status, isActive, message };
 
-  const newLog: AccessLog = {
-    id: generateUniqueId(),
-    plateNumber: plateNumber,
-    organizationName: organizationName,
-    listName: listName,
-    listColor: listColor,
-    timestamp: logTimestamp,
-    status: status,
-    isActive: isActive,
-    message: message,
-  };
+    startTransition(() => setRecentLogs(prev => [newLog, ...prev].slice(0, 5)));
+    startTransition(() => setStats(prev => ({ today: prev.today + 1, granted: prev.granted + (accessGranted ? 1 : 0), denied: prev.denied + (!accessGranted ? 1 : 0), unknown: prev.unknown })));
+    startTransition(() => setOverlayMessage({ title, listColor: color, listName: listName || '', plateNumber, organizationName: organizationName || '', isActive }));
+    startTransition(() => setShowOverlay(true));
 
-  startTransition(() => {
-    setRecentLogs(prev => [newLog, ...prev].slice(0, 5));
-  });
+    if (accessGranted) playSound('granted');
+    else playSound('denied');
 
-  startTransition(() => {
-    setStats(prev => ({
-      today: prev.today + 1,
-      granted: prev.granted + (accessGranted ? 1 : 0),
-      denied: prev.denied + (!accessGranted ? 1 : 0),
-      unknown: prev.unknown,
-    }));
-  });
+    const statusText = isActive ? 'активный' : 'неактивный';
+    speakText(accessGranted ? `Номер ${plateNumber.split('').join(' ')}. ${statusText}` : 'Номер не найден');
+    loadSimilarPlates(plateNumber);
 
-  startTransition(() => {
-    setOverlayMessage({
-      title: title,
-      listColor: color,
-      listName: listName || '',
-      plateNumber: plateNumber,
-      organizationName: organizationName || '',
-      isActive: isActive,
-    });
-  });
+    setTimeout(() => startTransition(() => setShowOverlay(false)), 4000);
+  }, [playSound, speakText, startTransition, loadSimilarPlates]);
 
-  startTransition(() => {
-    setShowOverlay(true);
-  });
+  useEffect(() => { if (user && user.roleId !== 5) { router.push('/'); toast.error('У вас нет доступа к этой странице'); } }, [user, router]);
 
-  // Звуковое оповещение
-  if (accessGranted) {
-    playSound('granted');
-  } else {
-    playSound('denied');
-  }
-
-// Голосовое оповещение
-const statusText = isActive ? 'активный' : 'неактивный';
-
-let voiceMessage = '';
-if (accessGranted) {
-  // Разбиваем номер на отдельные символы для произношения
-  const plateChars = plateNumber.split('').join(' ');
-  voiceMessage = `Номер ${plateChars}. ${statusText}`;
-} else {
-  voiceMessage = `Номер не найден`;
-}
-
-speakText(voiceMessage);
-
-  setTimeout(() => {
-    startTransition(() => {
-      setShowOverlay(false);
-    });
-  }, 4000);
-}, [playSound, speakText, startTransition]);
-
-  // Проверка прав доступа
-  useEffect(() => {
-    if (user && user.roleId !== 5) {
-      router.push('/');
-      toast.error('У вас нет доступа к этой странице');
-    }
-  }, [user, router]);
-
-  // Инициализация на клиенте
   useEffect(() => {
     if (!hydrated) {
-      const timeoutId = setTimeout(() => {
-        setHydrated(true);
-        setCurrentDate(new Date().toLocaleDateString('ru-RU'));
-        setCurrentTime(new Date().toLocaleTimeString('ru-RU'));
-      }, 0);
-
+      const timeoutId = setTimeout(() => { setHydrated(true); setCurrentDate(new Date().toLocaleDateString('ru-RU')); setCurrentTime(new Date().toLocaleTimeString('ru-RU')); }, 0);
       return () => clearTimeout(timeoutId);
     }
   }, [hydrated]);
 
-  // Обновление времени
   useEffect(() => {
     if (!hydrated) return;
-
-    timeIntervalRef.current = setInterval(() => {
-      startTransition(() => {
-        setCurrentTime(new Date().toLocaleTimeString('ru-RU'));
-      });
-    }, 1000);
-
-    return () => {
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current);
-      }
-    };
+    timeIntervalRef.current = setInterval(() => startTransition(() => setCurrentTime(new Date().toLocaleTimeString('ru-RU'))), 1000);
+    return () => { if (timeIntervalRef.current) clearInterval(timeIntervalRef.current); };
   }, [startTransition, hydrated]);
 
-  // Загрузка данных
   useEffect(() => {
-    if (!isInitializedRef.current && hydrated) {
-      isInitializedRef.current = true;
-
-      const loadData = async () => {
-        await Promise.all([loadRecentLogs(), loadTodayStats()]);
-      };
-
-      loadData().catch(error => {
-        console.error('Error loading initial data:', error);
-      });
-    }
+    if (!isInitializedRef.current && hydrated) { isInitializedRef.current = true; Promise.all([loadRecentLogs(), loadTodayStats()]).catch(() => {}); }
   }, [loadRecentLogs, loadTodayStats, hydrated]);
 
-  // WebSocket подключение
   useEffect(() => {
     if (!hydrated) return;
-
-    let wsUrl: string;
-
-    if (typeof window !== 'undefined') {
-      wsUrl = process.env.NEXT_PUBLIC_WS_URL || `ws://kpp1.sezkhorgos.kz:8080/ws`;
-    } else {
-      wsUrl = `ws://kpp1.sezkhorgos.kz:8080/ws`;
-    }
-
-    let ws: WebSocket | null = null;
-
-    try {
-      ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-        startTransition(() => {
-          setWsConnected(true);
-        });
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data: WebSocketMessage = JSON.parse(event.data);
-          if (data.type === 'plate_detected') {
-            handlePlateDetection(data);
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        startTransition(() => {
-          setWsConnected(false);
-        });
-      };
-
-      ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code);
-        startTransition(() => {
-          setWsConnected(false);
-        });
-
-        if (!event.wasClean) {
-          toast.error('Соединение с сервером разорвано');
-        }
-      };
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      startTransition(() => {
-        setWsConnected(false);
-      });
-    }
-
-    return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://kpp1.sezkhorgos.kz:8080/ws';
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+    ws.onopen = () => startTransition(() => setWsConnected(true));
+    ws.onmessage = (event) => {
+      try { const data: WebSocketMessage = JSON.parse(event.data); if (data.type === 'plate_detected') handlePlateDetection(data); } catch (error) {
+        console.log(error)
       }
     };
+    ws.onerror = () => startTransition(() => setWsConnected(false));
+    ws.onclose = (event) => { startTransition(() => setWsConnected(false)); if (!event.wasClean) toast.error('Соединение с сервером разорвано'); };
+    return () => { if (ws.readyState === WebSocket.OPEN) ws.close(); if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [handlePlateDetection, startTransition, hydrated]);
 
-  // Интервал для перезагрузки страницы
-  useEffect(() => {
-    if (!hydrated) return;
-
-    const reloadInterval = setInterval(() => {
-      window.location.reload();
-    }, 180000);
-
-    return () => clearInterval(reloadInterval);
-  }, [hydrated]);
+  useEffect(() => { if (!hydrated) return; const reloadInterval = setInterval(() => window.location.reload(), 180000); return () => clearInterval(reloadInterval); }, [hydrated]);
 
   if (!hydrated) {
     return (
       <div className={styles.container}>
         <Header role='security' />
-        <div className={styles.pageWrapper}>
-          <main className={styles.main}>
-            <div className={styles.content}>
-              <div className={styles.videoSection}>
-                <div className={styles.videoCard}>
-                  <div className={styles.videoContainer}>
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                      Загрузка...
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
+        <div className={styles.pageWrapper}><main className={styles.main}><div className={styles.content}><div className={styles.videoSection}><div className={styles.videoCard}><div className={styles.videoContainer}><div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>Загрузка...</div></div></div></div></div></main></div>
       </div>
     );
   }
 
-  const getStatusIcon = (status: 'granted' | 'denied' | 'unknown') => {
-    switch (status) {
-      case 'granted':
-        return <i className="ri-checkbox-circle-line" style={{ color: '#10b981' }}></i>;
-      case 'denied':
-        return <i className="ri-close-circle-line" style={{ color: '#f59e0b' }}></i>;
-      case 'unknown':
-        return <i className="ri-question-line" style={{ color: '#ef4444' }}></i>;
-    }
-  };
-
-  const getStatusText = (status: 'granted' | 'denied' | 'unknown', organizationName?: string) => {
-    switch (status) {
-      case 'granted': 
-        return organizationName ? 'Доступ разрешен' : 'Требует внимания';
-      case 'denied': 
-        return 'Доступ запрещен';
-      case 'unknown': 
-        return 'Неопознанная машина';
-    }
-  };
-
-  const getListColor = (listType?: string) => {
-    switch (listType) {
-      case 'white': return '#10b981';
-      case 'black': return '#ef4444';
-      case 'vip': return '#8b5cf6';
-      case 'temporary': return '#f59e0b';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusColor = (status: 'granted' | 'denied' | 'unknown') => {
-    switch (status) {
-      case 'granted': return '#10b981';
-      case 'denied': return '#f59e0b';
-      case 'unknown': return '#ef4444';
-    }
-  };
-
-  const formatDateTime = (dateString: string) => {
-    const localDateString = dateString.replace('Z', '');
-    const date = new Date(localDateString);
-
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
   return (
     <div className={styles.container}>
       <Header role='security' />
-
       <div className={styles.pageWrapper}>
         {showOverlay && (
-          <div
-            className={styles.fullscreenOverlay}
-            style={{
-              borderColor: overlayMessage.listColor,
-              color: overlayMessage.listColor,
-            }}
-          >
+          <div className={styles.fullscreenOverlay} style={{ borderColor: overlayMessage.listColor, color: overlayMessage.listColor }}>
             <div className={styles.overlayContent}>
-              <div className={styles.overlayTitle} style={{ color: overlayMessage.listColor }}>
-                {overlayMessage.title}
-              </div>
-              
-              {/* Показываем номер машины всегда */}
-              <div className={styles.overlayPlate}>
-                <i className="ri-car-line"></i>
-                {overlayMessage.plateNumber}
-              </div>
-              
-              {/* Показываем организацию, если есть */}
+              <div className={styles.overlayTitle} style={{ color: overlayMessage.listColor }}>{overlayMessage.title}</div>
+              <div className={styles.overlayPlate}><i className="ri-car-line"></i>{overlayMessage.plateNumber}</div>
               {overlayMessage.organizationName ? (
-                <div className={styles.overlayOrg}>
-                  <i className="ri-building-4-line"></i>
-                  {overlayMessage.organizationName}
-                </div>
-              ) : (
-                /* Если нет организации, но номер в списке - показываем предупреждение */
-                overlayMessage.title !== "Машины нет в списках" && overlayMessage.title !== "Номер не найден" && (
-                  <div className={styles.overlayOrg} style={{ color: '#f59e0b' }}>
-                    <i className="ri-alert-line"></i>
-                    Организация не указана
-                  </div>
-                )
+                <div className={styles.overlayOrg}><i className="ri-building-4-line"></i>{overlayMessage.organizationName}</div>
+              ) : overlayMessage.title !== "Машины нет в списках" && overlayMessage.title !== "Номер не найден" && (
+                <div className={styles.overlayOrg} style={{ color: '#f59e0b' }}><i className="ri-alert-line"></i>Организация не указана</div>
               )}
-              
-              {/* Показываем список, если есть */}
-              {overlayMessage.listName && (
-                <div className={styles.overlayList} style={{ color: overlayMessage.listColor }}>
-                  <i className="ri-list-check-3"></i>
-                  {overlayMessage.listName}
-                </div>
-              )}
-              
-              {/* Предупреждение для неактивных номеров */}
-              {!overlayMessage.isActive && overlayMessage.listName && (
-                <div className={styles.overlayWarning}>
-                  <i className="ri-alert-line"></i>
-                  Номер неактивен
-                </div>
-              )}
+              {overlayMessage.listName && <div className={styles.overlayList} style={{ color: overlayMessage.listColor }}><i className="ri-list-check-3"></i>{overlayMessage.listName}</div>}
+              {!overlayMessage.isActive && overlayMessage.listName && <div className={styles.overlayWarning}><i className="ri-alert-line"></i>Номер неактивен</div>}
             </div>
           </div>
         )}
-
         <main className={styles.main}>
           <div className={styles.content}>
             <div className={styles.videoSection}>
               <div className={styles.videoCard}>
                 <StatsButton stats={stats} />
-
-                {/* Форма ручного поиска номера */}
                 <div className={styles.searchSection} ref={searchContainerRef}>
                   <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
                     <div className={styles.searchInputWrapper}>
                       <i className="ri-search-line"></i>
-                      <input
-                        type="text"
-                        value={searchPlate}
-                        onChange={handleSearchInputChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Введите номер для проверки..."
-                        className={styles.searchInput}
-                        maxLength={20}
-                        autoComplete="off"
-                      />
-                      {searchLoading && (
-                        <i className="ri-loader-4-line ri-spin" style={{ position: 'absolute', right: '40px', color: '#9ca3af' }}></i>
-                      )}
-
-                      {/* Выпадающий список с подсказками */}
+                      <input type="text" value={searchPlate} onChange={handleSearchInputChange} onKeyDown={handleKeyDown} placeholder="Введите номер для проверки..." className={styles.searchInput} maxLength={20} autoComplete="off" />
+                      {searchLoading && <i className="ri-loader-4-line ri-spin" style={{ position: 'absolute', right: '40px', color: '#9ca3af' }}></i>}
                       {showSuggestions && suggestions.length > 0 && (
                         <div className={styles.suggestionsDropdown}>
                           {suggestions.map((suggestion, index) => (
-                            <div
-                              key={suggestion.plateNumber}
-                              className={`${styles.suggestionItem} ${index === selectedIndex ? styles.suggestionItemSelected : ''}`}
-                              onClick={() => handleSelectSuggestion(suggestion)}
-                              onMouseEnter={() => setSelectedIndex(index)}
-                            >
-                              <div className={styles.suggestionMain}>
-                                <span className={styles.suggestionPlate}>{suggestion.plateNumber}</span>
-                                <span
-                                  className={styles.suggestionStatus}
-                                  style={{
-                                    color: suggestion.isActive ? '#10b981' : '#f59e0b'
-                                  }}
-                                >
-                                  {suggestion.isActive ? '✓ Активен' : '⚠ Неактивен'}
-                                </span>
-                              </div>
-                              {suggestion.organizationName && (
-                                <div className={styles.suggestionDetail}>
-                                  <i className="ri-building-4-line"></i>
-                                  <span>{suggestion.organizationName}</span>
-                                </div>
-                              )}
-                              {suggestion.listName && (
-                                <div className={styles.suggestionDetail}>
-                                  <i className="ri-list-check-3"></i>
-                                  <span style={{ color: suggestion.listColor }}>{suggestion.listName}</span>
-                                </div>
-                              )}
+                            <div key={suggestion.plateNumber} className={`${styles.suggestionItem} ${index === selectedIndex ? styles.suggestionItemSelected : ''}`} onClick={() => handleSelectSuggestion(suggestion)} onMouseEnter={() => setSelectedIndex(index)}>
+                              <div className={styles.suggestionMain}><span className={styles.suggestionPlate}>{suggestion.plateNumber}</span><span className={styles.suggestionStatus} style={{ color: suggestion.isActive ? '#10b981' : '#f59e0b' }}>{suggestion.isActive ? '✓ Активен' : '⚠ Неактивен'}</span></div>
+                              {suggestion.organizationName && <div className={styles.suggestionDetail}><i className="ri-building-4-line"></i><span>{suggestion.organizationName}</span></div>}
+                              {suggestion.listName && <div className={styles.suggestionDetail}><i className="ri-list-check-3"></i><span style={{ color: suggestion.listColor }}>{suggestion.listName}</span></div>}
                             </div>
                           ))}
                         </div>
                       )}
-
-                      {showSuggestions && suggestions.length === 0 && searchPlate.length >= 3 && !searchLoading && (
-                        <div className={styles.suggestionsDropdown}>
-                          <div className={styles.noSuggestions}>
-                            <i className="ri-search-line"></i>
-                            <span>Похожих номеров не найдено</span>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </form>
-
-                  {/* Результат поиска */}
                   {showSearchResult && searchResult && (
-                    <div
-                      className={styles.searchResult}
-                      style={{
-                        borderColor: searchResult.exists && searchResult.isActive
-                          ? (searchResult.listColor || '#10b981')
-                          : '#ef4444'
-                      }}
-                    >
-                      <div className={styles.searchResultHeader}>
-                        <span className={styles.searchResultPlate}>{searchResult.plateNumber}</span>
-                        <span
-                          className={styles.searchResultStatus}
-                          style={{
-                            color: searchResult.exists && searchResult.isActive ? '#10b981' : '#ef4444'
-                          }}
-                        >
-                          {searchResult.exists && searchResult.isActive ? '✓ Доступ разрешен' : '✗ Доступ запрещен'}
-                        </span>
-                      </div>
-
-                      {searchResult.organizationName ? (
-                        <div className={styles.searchResultRow}>
-                          <i className="ri-building-4-line"></i>
-                          <span>{searchResult.organizationName}</span>
-                        </div>
-                      ) : (
-                        searchResult.exists && (
-                          <div className={styles.searchResultRow} style={{ color: '#f59e0b' }}>
-                            <i className="ri-alert-line"></i>
-                            <span>Организация не указана</span>
-                          </div>
-                        )
-                      )}
-
-                      {searchResult.listName && (
-                        <div className={styles.searchResultRow}>
-                          <i className="ri-list-check-3"></i>
-                          <span style={{ color: searchResult.listColor }}>
-                            {searchResult.listName}
-                          </span>
-                        </div>
-                      )}
-
-                      {searchResult.validUntil && (
-                        <div className={styles.searchResultRow}>
-                          <i className="ri-calendar-line"></i>
-                          <span>Действует до: {new Date(searchResult.validUntil).toLocaleDateString('ru-RU')}</span>
-                        </div>
-                      )}
-
-                      {!searchResult.isActive && searchResult.exists && (
-                        <div className={styles.searchResultWarning}>
-                          <i className="ri-alert-line"></i>
-                          <span>Номер найден, но неактивен</span>
-                        </div>
-                      )}
-
-                      {searchResult.message && (
-                        <div className={styles.searchResultMessage}>
-                          <i className="ri-information-line"></i>
-                          <span>{searchResult.message}</span>
-                        </div>
-                      )}
+                    <div className={styles.searchResult} style={{ borderColor: searchResult.exists && searchResult.isActive ? (searchResult.listColor || '#10b981') : '#ef4444' }}>
+                      <div className={styles.searchResultHeader}><span className={styles.searchResultPlate}>{searchResult.plateNumber}</span><span className={styles.searchResultStatus} style={{ color: searchResult.exists && searchResult.isActive ? '#10b981' : '#ef4444' }}>{searchResult.exists && searchResult.isActive ? '✓ Доступ разрешен' : '✗ Доступ запрещен'}</span></div>
+                      {searchResult.organizationName ? <div className={styles.searchResultRow}><i className="ri-building-4-line"></i><span>{searchResult.organizationName}</span></div> : searchResult.exists && <div className={styles.searchResultRow} style={{ color: '#f59e0b' }}><i className="ri-alert-line"></i><span>Организация не указана</span></div>}
+                      {searchResult.listName && <div className={styles.searchResultRow}><i className="ri-list-check-3"></i><span style={{ color: searchResult.listColor }}>{searchResult.listName}</span></div>}
+                      {searchResult.validUntil && <div className={styles.searchResultRow}><i className="ri-calendar-line"></i><span>Действует до: {new Date(searchResult.validUntil).toLocaleDateString('ru-RU')}</span></div>}
+                      {!searchResult.isActive && searchResult.exists && <div className={styles.searchResultWarning}><i className="ri-alert-line"></i><span>Номер найден, но неактивен</span></div>}
+                      {searchResult.message && <div className={styles.searchResultMessage}><i className="ri-information-line"></i><span>{searchResult.message}</span></div>}
                     </div>
                   )}
                 </div>
-
-                <div className={styles.videoContainer}>
-                  <WebRTCPlayer cameraId="camera1" />
-                </div>
+                <div className={styles.videoContainer}><WebRTCPlayer cameraId="camera1" /></div>
               </div>
             </div>
-
+            <div className={styles.similarNumbers}>
+              <div className={styles.similarNumbersTitle}><i className="ri-list-check-3"></i>Похожие номера{similarLoading && <i className="ri-loader-4-line ri-spin" style={{ marginLeft: 8 }}></i>}</div>
+              {similarPlates.length > 0 ? (
+                <div className={styles.similarNumbersList}>
+                  {similarPlates.map((plate) => (
+                    <div key={plate.plateNumber} className={styles.similarNumberItem} onClick={() => handleManualCheck(plate.plateNumber)} style={{ cursor: 'pointer' }}>
+                      <span className={styles.similarNumberPlate}>{plate.plateNumber}</span>
+                      <span style={{ color: plate.isActive ? '#10b981' : '#f59e0b', fontSize: 12 }}>{plate.isActive ? '✓' : '⚠'}</span>
+                      {plate.organizationName && <span className={styles.similarNumberOrg}>{plate.organizationName}</span>}
+                      {plate.listName && <span className={styles.similarNumberListName} style={{ color: plate.listColor }}>{plate.listName}</span>}
+                    </div>
+                  ))}
+                </div>
+              ) : <p className={styles.similarNumbersEmpty}>Нет похожих номеров</p>}
+            </div>
             <div className={styles.sidebar}>
               <div className={styles.sidebarCard}>
-                <h2 className={styles.sidebarTitle}>
-                  <i className="ri-history-line"></i>
-                  Последние проезды
-                  <span className={styles.logsCount}>{recentLogs.length}/5</span>
-                </h2>
-
+                <h2 className={styles.sidebarTitle}><i className="ri-history-line"></i>Последние проезды<span className={styles.logsCount}>{recentLogs.length}/5</span></h2>
                 {recentLogs.length > 0 ? (
                   <div className={styles.logsList}>
-                    {recentLogs.map((log) => {
-                      const listColor = log.listColor || getListColor(log.listType);
-                      const statusColor = getStatusColor(log.status);
-
-                      return (
-                        <div
-                          key={log.id}
-                          className={`${styles.logItem} ${styles[`logItem_${log.status}`]}`}
-                          style={{ borderLeftColor: statusColor }}
-                        >
-                          <div className={styles.logHeader}>
-                            <span className={styles.logPlate}>{log.plateNumber}</span>
-                            {getStatusIcon(log.status)}
-                          </div>
-
-                          <div className={styles.logDetails}>
-                            {/* Организация */}
-                            <div className={styles.detailRow}>
-                              <i className={log.organizationName ? "ri-building-4-line" : "ri-alert-line"} 
-                                 style={{ color: log.organizationName ? 'inherit' : '#f59e0b' }}></i>
-                              <span style={{ color: log.organizationName ? 'inherit' : '#f59e0b' }}>
-                                {log.organizationName || 'Организация не указана'}
-                              </span>
-                            </div>
-                            
-                            {/* Список */}
-                            {log.listName && (
-                              <div className={styles.detailRow}>
-                                <i className="ri-list-check-3"></i>
-                                <span style={{ color: listColor }}>
-                                  {log.listName}
-                                </span>
-                              </div>
-                            )}
-                            
-                            {/* Статус активности */}
-                            {log.status === 'denied' && log.listName && (
-                              <div className={styles.detailRow}>
-                                <i className="ri-alert-line"></i>
-                                <span className={styles.warningText}>
-                                  Номер неактивен
-                                </span>
-                              </div>
-                            )}
-                            
-                            {/* Предупреждение если нет организации но номер в списке */}
-                            {log.status === 'granted' && !log.organizationName && (
-                              <div className={styles.detailRow}>
-                                <i className="ri-error-warning-line" style={{ color: '#f59e0b' }}></i>
-                                <span className={styles.warningText}>
-                                  Номер в списке, но нет организации
-                                </span>
-                              </div>
-                            )}
-                            
-                            {/* Сообщение от системы */}
-                            {log.message && (
-                              <div className={styles.detailRow}>
-                                <i className="ri-information-line"></i>
-                                <span className={styles.logMessage}>{log.message}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className={styles.logFooter}>
-                            <span className={styles.logTime}>
-                              {formatDateTime(log.timestamp.toISOString())}
-                            </span>
-                            <span className={styles.logStatus} style={{ color: statusColor }}>
-                              {getStatusText(log.status, log.organizationName)}
-                            </span>
-                          </div>
+                    {recentLogs.map((log) => (
+                      <div key={log.id} className={`${styles.logItem} ${styles[`logItem_${log.status}`]}`} style={{ borderLeftColor: log.status === 'granted' ? '#10b981' : log.status === 'denied' ? '#f59e0b' : '#ef4444' }}>
+                        <div className={styles.logHeader}><span className={styles.logPlate}>{log.plateNumber}</span>{log.status === 'granted' ? <i className="ri-checkbox-circle-line" style={{ color: '#10b981' }}></i> : log.status === 'denied' ? <i className="ri-close-circle-line" style={{ color: '#f59e0b' }}></i> : <i className="ri-question-line" style={{ color: '#ef4444' }}></i>}</div>
+                        <div className={styles.logDetails}>
+                          <div className={styles.detailRow}><i className={log.organizationName ? "ri-building-4-line" : "ri-alert-line"} style={{ color: log.organizationName ? 'inherit' : '#f59e0b' }}></i><span style={{ color: log.organizationName ? 'inherit' : '#f59e0b' }}>{log.organizationName || 'Организация не указана'}</span></div>
+                          {log.listName && <div className={styles.detailRow}><i className="ri-list-check-3"></i><span style={{ color: log.listColor || '#6b7280' }}>{log.listName}</span></div>}
+                          {log.status === 'denied' && log.listName && <div className={styles.detailRow}><i className="ri-alert-line"></i><span className={styles.warningText}>Номер неактивен</span></div>}
+                          {log.status === 'granted' && !log.organizationName && <div className={styles.detailRow}><i className="ri-error-warning-line" style={{ color: '#f59e0b' }}></i><span className={styles.warningText}>Номер в списке, но нет организации</span></div>}
+                          {log.message && <div className={styles.detailRow}><i className="ri-information-line"></i><span className={styles.logMessage}>{log.message}</span></div>}
                         </div>
-                      );
-                    })}
+                        <div className={styles.logFooter}><span className={styles.logTime}>{new Date(log.timestamp.toISOString().replace('Z', '')).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span><span className={styles.logStatus} style={{ color: log.status === 'granted' ? '#10b981' : log.status === 'denied' ? '#f59e0b' : '#ef4444' }}>{log.status === 'granted' ? (log.organizationName ? 'Доступ разрешен' : 'Требует внимания') : log.status === 'denied' ? 'Доступ запрещен' : 'Неопознанная машина'}</span></div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <div className={styles.emptyLogs}>
-                    <i className="ri-inbox-line"></i>
-                    <p>Нет проездов</p>
-                    <p className={styles.emptyHint}>
-                      Ожидайте прибытия транспорта
-                    </p>
-                  </div>
+                  <div className={styles.emptyLogs}><i className="ri-inbox-line"></i><p>Нет проездов</p><p className={styles.emptyHint}>Ожидайте прибытия транспорта</p></div>
                 )}
               </div>
-
               <div className={styles.infoCard}>
-                <h3 className={styles.infoTitle}>
-                  <i className="ri-information-line"></i>
-                  Информация
-                </h3>
+                <h3 className={styles.infoTitle}><i className="ri-information-line"></i>Информация</h3>
                 <div className={styles.infoContent}>
-                  <div className={styles.infoItem}>
-                    <span>Дата:</span>
-                    <strong suppressHydrationWarning>{currentDate || '--.--.----'}</strong>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span>Время:</span>
-                    <strong suppressHydrationWarning>{currentTime || '--:--:--'}</strong>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span>Режим:</span>
-                    <strong className={wsConnected ? styles.liveMode : styles.demoMode}>
-                      {wsConnected ? 'Live' : 'Демо'}
-                    </strong>
-                  </div>
-                  {wsConnected && (
-                    <div className={styles.infoItem}>
-                      <span>WebSocket:</span>
-                      <strong className={styles.online}>Подключен</strong>
-                    </div>
-                  )}
+                  <div className={styles.infoItem}><span>Дата:</span><strong suppressHydrationWarning>{currentDate || '--.--.----'}</strong></div>
+                  <div className={styles.infoItem}><span>Время:</span><strong suppressHydrationWarning>{currentTime || '--:--:--'}</strong></div>
+                  <div className={styles.infoItem}><span>Режим:</span><strong className={wsConnected ? styles.liveMode : styles.demoMode}>{wsConnected ? 'Live' : 'Демо'}</strong></div>
+                  {wsConnected && <div className={styles.infoItem}><span>WebSocket:</span><strong className={styles.online}>Подключен</strong></div>}
                 </div>
               </div>
             </div>
