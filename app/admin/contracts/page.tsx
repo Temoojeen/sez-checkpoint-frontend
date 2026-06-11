@@ -11,6 +11,7 @@ import { Contract, Organization, ApiError } from '@/types';
 import { formatDate } from '@/utils/format';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
+import { Autocomplete, TextField } from '@mui/material';
 
 export default function ContractsPage() {
   const { user } = useAuth();
@@ -76,6 +77,17 @@ export default function ContractsPage() {
       toast.error('Ошибка при загрузке договоров');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Функция копирования в буфер обмена
+  const copyToClipboard = async (text: string, label: string = 'Текст') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} скопирован в буфер обмена`);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast.error('Ошибка при копировании');
     }
   };
 
@@ -159,6 +171,10 @@ export default function ContractsPage() {
     return true;
   });
 
+  // Находим выбранную организацию для Autocomplete
+  const selectedOrg = orgFilter !== 'all' 
+    ? organizations.find(org => org.id === orgFilter) || null
+    : null;
 
   if (loading) {
     return (
@@ -173,29 +189,6 @@ export default function ContractsPage() {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Управление договорами</h1>
-            <p className={styles.subtitle}>
-              Просмотр и управление договорами организаций
-            </p>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge} style={{ backgroundColor: '#8b5cf620', color: '#8b5cf6' }}>
-              Администратор
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
       <Header role='admin'/>
 
       <main className={styles.main}>
@@ -291,18 +284,61 @@ export default function ContractsPage() {
               <option value="temporary">Временные</option>
             </select>
 
-            <select
-              value={orgFilter}
-              onChange={(e) => setOrgFilter(e.target.value)}
-              className={styles.select}
-            >
-              <option value="all">Все организации</option>
-              {organizations?.map(org => (
-                <option key={org.id} value={org.id}>
-                  {org.name}
-                </option>
-              ))}
-            </select>
+            <Autocomplete
+              value={selectedOrg}
+              onChange={(event, newValue) => {
+                setOrgFilter(newValue ? newValue.id : 'all');
+              }}
+              options={organizations || []}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Поиск организации..."
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: '#fff',
+                      '& fieldset': {
+                        borderColor: '#e5e7eb',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#d1d5db',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#4f46e5',
+                      },
+                    },
+                    '& .MuiInputBase-input': {
+                      fontSize: '0.875rem',
+                      padding: '0.5rem 0.875rem',
+                    },
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.875rem' }}>{option.name}</span>
+                    {option.bin && (
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                        БИН: {option.bin}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              )}
+              noOptionsText="Организации не найдены"
+              loadingText="Загрузка..."
+              sx={{
+                minWidth: '250px',
+                '& .MuiAutocomplete-inputRoot': {
+                  padding: '0 !important',
+                },
+              }}
+            />
           </div>
 
           {(searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || orgFilter !== 'all') && (
@@ -342,7 +378,16 @@ export default function ContractsPage() {
                   return (
                     <tr key={contract.id}>
                       <td>
-                        <span className={styles.contractNumber}>{contract.contractNumber}</span>
+                        <div className={styles.contractNumberCell}>
+                          <span className={styles.contractNumber}>{contract.contractNumber}</span>
+                          <button
+                            onClick={() => copyToClipboard(contract.contractNumber, 'Номер договора')}
+                            className={styles.copyButton}
+                            title="Копировать номер договора"
+                          >
+                            <i className="ri-file-copy-line"></i>
+                          </button>
+                        </div>
                       </td>
                       <td>
                         <Link 

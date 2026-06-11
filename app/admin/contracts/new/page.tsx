@@ -39,6 +39,39 @@ export default function NewContractPage() {
     }
   };
 
+// Функция генерации случайного номера договора
+const generateContractNumber = () => {
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const digits = '0123456789';
+  const specials = '!@#$%&*';
+  
+  // Базовая длина 8 символов
+  let contractNumber = '';
+  
+  // Добавляем 5-6 случайных строчных букв
+  const lowercaseCount = Math.floor(Math.random() * 2) + 5; // 5 или 6
+  for (let i = 0; i < lowercaseCount; i++) {
+    contractNumber += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+  }
+  
+  // Добавляем 2 цифры
+  for (let i = 0; i < 2; i++) {
+    contractNumber += digits.charAt(Math.floor(Math.random() * digits.length));
+  }
+  
+  // Добавляем одну заглавную букву
+  contractNumber += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+  
+  // Добавляем один спецсимвол
+  contractNumber += specials.charAt(Math.floor(Math.random() * specials.length));
+  
+  // Перемешиваем все символы случайным образом
+  contractNumber = contractNumber.split('').sort(() => Math.random() - 0.5).join('');
+  
+  setFormData(prev => ({ ...prev, contractNumber }));
+};
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -120,20 +153,7 @@ export default function NewContractPage() {
   return (
     <div className={styles.container}>
       <Header role='admin'/>
-      {/* Заголовок */}
-      {/* <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <div>
-            <h1 className={styles.title}>Новый договор</h1>
-            <p className={styles.subtitle}>Создание нового договора с организацией</p>
-          </div>
-          <Link href="/admin/contracts" className={styles.backButton}>
-            <i className="ri-arrow-left-line"></i>
-            <span>Назад к списку</span>
-          </Link>
-        </div>
-      </div> */}
-
+      
       {/* Форма */}
       <div className={styles.main}>
         <div className={styles.formCard}>
@@ -143,18 +163,29 @@ export default function NewContractPage() {
               <label htmlFor="contractNumber" className={styles.label}>
                 Номер договора <span className={styles.required}>*</span>
               </label>
-              <input
-                type="text"
-                id="contractNumber"
-                name="contractNumber"
-                value={formData.contractNumber}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="ДОГ-2024-001"
-                disabled={loading}
-                required
-              />
-              <p className={styles.help}>Уникальный номер договора</p>
+              <div className={styles.inputWithButton}>
+                <input
+  type="text"
+  id="contractNumber"
+  name="contractNumber"
+  value={formData.contractNumber}
+  onChange={handleChange}
+  className={styles.input}
+  placeholder="введите или сгенерируйте Номер договора"
+  disabled={loading}
+  required
+/>
+                <button
+                  type="button"
+                  onClick={generateContractNumber}
+                  className={styles.generateButton}
+                  disabled={loading}
+                  title="Сгенерировать номер договора"
+                >
+                  <i className="ri-refresh-line"></i>
+                  <span>Сгенерировать</span>
+                </button>
+              </div>
             </div>
 
             {/* Организация */}
@@ -281,25 +312,6 @@ export default function NewContractPage() {
                 disabled={loading}
               />
             </div>
-
-            {/* Информация о типах договоров */}
-            {/* <div className={styles.infoBox}>
-              <i className="ri-information-line"></i>
-              <div className={styles.infoContent}>
-                <p className={styles.infoTitle}>О типах договоров:</p>
-                <ul className={styles.infoList}>
-                  <li>
-                    <strong>Стандартный</strong> - обычный договор для участников СЭЗ
-                  </li>
-                  <li>
-                    <strong>VIP</strong> - особые условия, приоритетная обработка
-                  </li>
-                  <li>
-                    <strong>Временный</strong> - краткосрочный договор (до 30 дней)
-                  </li>
-                </ul>
-              </div>
-            </div> */}
 
             {/* Кнопки */}
             <div className={styles.formActions}>

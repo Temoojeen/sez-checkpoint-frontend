@@ -83,6 +83,11 @@ class UserService {
     return response.data;
   }
 
+  async getByOrganization(orgId: string): Promise<User[]> {
+  const response = await api.get(`/admin/users?organizationId=${orgId}`);
+  return response.data;
+}
+
   async getAvailableLists(): Promise<AccessList[]> {
     try {
       const response = await api.get<AccessList[]>('/user/list-permissions');

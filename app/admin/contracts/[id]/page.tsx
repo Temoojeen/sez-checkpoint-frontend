@@ -111,6 +111,17 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  // Функция копирования в буфер обмена
+  const copyToClipboard = async (text: string, label: string = 'Текст') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} скопирован в буфер обмена`);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast.error('Ошибка при копировании');
+    }
+  };
+
   const handleEdit = () => {
     setIsEditing(true);
   };
@@ -252,35 +263,6 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   return (
     <div className={styles.container}>
       <Header role='admin'/>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.headerLeft}>
-            <Link href="/admin/contracts" className={styles.backLink}>
-              <i className="ri-arrow-left-line"></i>
-              <span>К списку договоров</span>
-            </Link>
-            <div>
-              <h1 className={styles.title}>Договор #{contract.contractNumber}</h1>
-              <p className={styles.subtitle}>
-                {organization?.name || 'Загрузка...'}
-              </p>
-            </div>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge} style={{ backgroundColor: '#8b5cf620', color: '#8b5cf6' }}>
-              Администратор
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
 
       <main className={styles.main}>
         {/* Статус и основные действия */}
@@ -460,7 +442,16 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
                 <div className={styles.infoGrid}>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Номер договора:</span>
-                    <span className={styles.infoValue}>{contract.contractNumber}</span>
+                    <span className={styles.infoValue}>
+                      <span className={styles.infoValueText}>{contract.contractNumber}</span>
+                      <button
+                        onClick={() => copyToClipboard(contract.contractNumber, 'Номер договора')}
+                        className={styles.copyButton}
+                        title="Копировать номер договора"
+                      >
+                        <i className="ri-file-copy-line"></i>
+                      </button>
+                    </span>
                   </div>
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Организация:</span>

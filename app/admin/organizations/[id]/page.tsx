@@ -97,6 +97,17 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     }
   };
 
+  // Функция копирования в буфер обмена
+  const copyToClipboard = async (text: string, label: string = 'Текст') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} скопирован в буфер обмена`);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast.error('Ошибка при копировании');
+    }
+  };
+
   const handleEdit = () => {
     setIsEditing(true);
   };
@@ -212,35 +223,6 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
   return (
     <div className={styles.container}>
       <Header role='admin'/>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.headerLeft}>
-            <Link href="/admin/organizations" className={styles.backLink}>
-              <i className="ri-arrow-left-line"></i>
-              <span>К списку организаций</span>
-            </Link>
-            <div>
-              <h1 className={styles.title}>{organization.name}</h1>
-              <p className={styles.subtitle}>
-                БИН: {organization.bin}
-              </p>
-            </div>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge} style={{ backgroundColor: '#8b5cf620', color: '#8b5cf6' }}>
-              Администратор
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
 
       <main className={styles.main}>
         {/* Статистика */}
@@ -496,7 +478,16 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
                         return (
                           <tr key={contract.id}>
                             <td>
-                              <span className={styles.contractNumber}>{contract.contractNumber}</span>
+                              <div className={styles.contractNumberCell}>
+                                <span className={styles.contractNumber}>{contract.contractNumber}</span>
+                                <button
+                                  onClick={() => copyToClipboard(contract.contractNumber, 'Номер договора')}
+                                  className={styles.copyButton}
+                                  title="Копировать номер договора"
+                                >
+                                  <i className="ri-file-copy-line"></i>
+                                </button>
+                              </div>
                             </td>
                             <td>
                               <span className={styles.contractType}>
