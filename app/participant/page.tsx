@@ -25,6 +25,7 @@ export default function ParticipantPage() {
   const [availableLists, setAvailableLists] = useState<AccessList[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [showContractNumber, setShowContractNumber] = useState(true); // По умолчанию показываем
 
   // Получаем максимальную дату - 31 декабря текущего года
   const getMaxDate = () => {
@@ -99,15 +100,62 @@ export default function ParticipantPage() {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-  const { name, value } = e.target;
-  
-  // Если это поле номера - автоматически приводим к верхнему регистру
-  if (name === 'plateNumber') {
-    setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
-  } else {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }
-};
+    const { name, value } = e.target;
+    
+    // Если это поле номера - очищаем от пробелов и приводим к верхнему регистру
+    if (name === 'plateNumber') {
+      // Удаляем все пробелы и приводим к верхнему регистру
+      const cleaned = value.replace(/\s/g, '').toUpperCase();
+      // Проверяем, что вводятся только латинские буквы и цифры
+      const latinAndNumbers = cleaned.replace(/[^A-Z0-9]/g, '');
+      setFormData(prev => ({ ...prev, [name]: latinAndNumbers }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Функция валидации номера
+  const validatePlateNumber = (plateNumber: string): boolean => {
+    // Проверка на пустое значение
+    if (!plateNumber.trim()) {
+      toast.error('Введите государственный номер машины');
+      return false;
+    }
+    
+    // Проверка на наличие пробелов
+    if (plateNumber.includes(' ')) {
+      toast.error('Номер не должен содержать пробелы');
+      return false;
+    }
+    
+    // Проверка на латинские буквы в верхнем регистре и цифры
+    const latinPattern = /^[A-Z0-9]+$/;
+    if (!latinPattern.test(plateNumber)) {
+      toast.error('Используйте только заглавные латинские буквы и цифры');
+      return false;
+    }
+    
+    // Проверка на минимальную длину
+    if (plateNumber.length < 4) {
+      toast.error('Номер слишком короткий');
+      return false;
+    }
+    
+    // Проверка на максимальную длину
+    if (plateNumber.length > 10) {
+      toast.error('Номер слишком длинный');
+      return false;
+    }
+    
+    // Проверка формата (опционально)
+    const formatPattern = /^[A-Z]\d{3}[A-Z]{2}\d{2,3}$/;
+    if (!formatPattern.test(plateNumber)) {
+      toast.error('Неверный формат номера. Пример: A123BC177');
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,8 +166,8 @@ export default function ParticipantPage() {
       return;
     }
     
-    if (!formData.plateNumber.trim()) {
-      toast.error('Введите государственный номер машины');
+    // Валидация номера
+    if (!validatePlateNumber(formData.plateNumber)) {
       return;
     }
     
@@ -252,17 +300,29 @@ export default function ParticipantPage() {
                   <label htmlFor="contractNumber" className={styles.label}>
                     Номер договора <span className={styles.required}>*</span>
                   </label>
-                  <input
-                    type="text"
-                    id="contractNumber"
-                    name="contractNumber"
-                    value={formData.contractNumber}
-                    onChange={handleChange}
-                    className={styles.input}
-                    placeholder="ДОГ-2024-001"
-                    disabled={submitting}
-                    required
-                  />
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      type={showContractNumber ? "text" : "password"}
+                      id="contractNumber"
+                      name="contractNumber"
+                      value={formData.contractNumber}
+                      onChange={handleChange}
+                      className={styles.input}
+                      placeholder="ДОГ-2024-001"
+                      disabled={submitting}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowContractNumber(!showContractNumber)}
+                      className={styles.passwordToggle}
+                      aria-label={showContractNumber ? "Скрыть номер договора" : "Показать номер договора"}
+                      tabIndex={-1}
+                      title={showContractNumber ? "Скрыть номер договора" : "Показать номер договора"}
+                    >
+                      <i className={`ri-${showContractNumber ? 'eye-off' : 'eye'}-line`}></i>
+                    </button>
+                  </div>
                   <p className={styles.help}>Введите номер договора из вашего соглашения</p>
                 </div>
 
@@ -272,19 +332,34 @@ export default function ParticipantPage() {
                     Гос. номер машины <span className={styles.required}>*</span>
                   </label>
                   <input
-  type="text"
-  id="plateNumber"
-  name="plateNumber"
-  value={formData.plateNumber}
-  onChange={handleChange}
-  className={styles.input}
-  placeholder="123ABC01"
-  maxLength={20}
-  disabled={submitting}
-  required
-  style={{ textTransform: 'uppercase' }}
-/>
-                  <p className={styles.help}>Пример: 123ABC01 или A123BC</p>
+                    type="text"
+                    id="plateNumber"
+                    name="plateNumber"
+                    value={formData.plateNumber}
+                    onChange={handleChange}
+                    className={styles.input}
+                    placeholder="123ABC01"
+                    maxLength={10}
+                    disabled={submitting}
+                    required
+                    style={{ 
+                      textTransform: 'uppercase', 
+                      fontFamily: 'monospace', 
+                      letterSpacing: '1px',
+                      fontSize: '1.1em'
+                    }}
+                    pattern="[A-Z0-9]+"
+                    title="Только заглавные латинские буквы и цифры без пробелов"
+                    autoComplete="off"
+                    onKeyDown={(e) => {
+                      if (e.key === ' ') {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                  <p className={styles.help}>
+                    Формат: латинские буквы и цифры без пробелов (A123BC177)
+                  </p>
                 </div>
 
                 {/* Список для подачи */}
@@ -385,7 +460,6 @@ export default function ParticipantPage() {
                     />
                     <p className={styles.help}>
                       Выберите дату, до которой номер будет активен. После истечения срока номер автоматически деактивируется. По умолчанию — до конца года.
-                      
                     </p>
                   </div>
                 </div>

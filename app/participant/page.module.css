@@ -111,10 +111,10 @@
   border-color: var(--primary-light);
 }
 
-.formCard,
+/* .formCard,
 .historyCard {
   composes: card cardGlass;
-}
+} */
 
 /* ===== ЗАГОЛОВКИ ===== */
 .sectionTitle {
@@ -617,4 +617,61 @@
 
 .submitButton:disabled i {
   animation: pulse 1.5s ease-in-out infinite;
+}
+/* Обертка для поля с кнопкой показать/скрыть */
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.passwordInputWrapper .input {
+  width: 100%;
+  padding-right: 45px; /* Освобождаем место для кнопки */
+}
+
+/* Кнопка показать/скрыть */
+.passwordToggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  z-index: 10;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.passwordToggle:hover {
+  color: #4f46e5;
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.passwordToggle:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.passwordToggle i {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* Адаптация для темной темы */
+.passwordToggle {
+  color: #9ca3af;
+}
+
+.passwordToggle:hover {
+  color: #818cf8;
+  background-color: rgba(129, 140, 248, 0.1);
 }

@@ -1,6 +1,7 @@
 /* page.module.css */
 
 .container {
+  padding-top: 100px;
   min-height: 100vh;
   background-color: #f8fafc;
 }

@@ -132,22 +132,68 @@ export default function AdminApprovedPlatesPage() {
     setEditingPlate(null);
   };
 
- const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-  const { name, value } = e.target;
-  
-  // Автоматически приводим номер к верхнему регистру
-  if (name === 'plateNumber') {
-    setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
-  } else {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }
-};
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'plateNumber') {
+      // Удаляем все пробелы и приводим к верхнему регистру
+      const cleaned = value.replace(/\s/g, '').toUpperCase();
+      // Проверяем, что вводятся только латинские буквы и цифры
+      const latinAndNumbers = cleaned.replace(/[^A-Z0-9]/g, '');
+      setFormData(prev => ({ ...prev, [name]: latinAndNumbers }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Валидация номера
+  const validatePlateNumber = (plateNumber: string): boolean => {
+    // Проверка на пустое значение
+    if (!plateNumber.trim()) {
+      toast.error('Введите государственный номер');
+      return false;
+    }
+    
+    // Проверка на наличие пробелов
+    if (plateNumber.includes(' ')) {
+      toast.error('Номер не должен содержать пробелы');
+      return false;
+    }
+    
+    // Проверка на латинские буквы в верхнем регистре и цифры
+    const latinPattern = /^[A-Z0-9]+$/;
+    if (!latinPattern.test(plateNumber)) {
+      toast.error('Используйте только заглавные латинские буквы и цифры');
+      return false;
+    }
+    
+    // Проверка на минимальную длину
+    if (plateNumber.length < 4) {
+      toast.error('Номер слишком короткий');
+      return false;
+    }
+    
+    // Проверка на максимальную длину
+    if (plateNumber.length > 10) {
+      toast.error('Номер слишком длинный');
+      return false;
+    }
+    
+    // Проверка формата (опционально, пример для РФ: A123BC177)
+    const formatPattern = /^[A-Z]\d{3}[A-Z]{2}\d{2,3}$/;
+    if (!formatPattern.test(plateNumber)) {
+      toast.error('Неверный формат номера. Пример: A123BC177');
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.plateNumber.trim()) {
-      toast.error('Введите государственный номер');
+    // Валидация номера
+    if (!validatePlateNumber(formData.plateNumber)) {
       return;
     }
     
@@ -206,17 +252,17 @@ export default function AdminApprovedPlatesPage() {
   };
 
   const handleDelete = async (id: string, plateNumber: string) => {
-  if (window.confirm(`Вы уверены, что хотите полностью удалить номер "${plateNumber}" из базы данных? Это действие нельзя отменить.`)) {
-    try {
-      await approvedPlateService.delete(id);
-      toast.success('Номер полностью удален из базы данных');
-      await fetchData();
-    } catch (error) {
-      console.error('Error deleting plate:', error);
-      toast.error('Ошибка при удалении номера');
+    if (window.confirm(`Вы уверены, что хотите полностью удалить номер "${plateNumber}" из базы данных? Это действие нельзя отменить.`)) {
+      try {
+        await approvedPlateService.delete(id);
+        toast.success('Номер полностью удален из базы данных');
+        await fetchData();
+      } catch (error) {
+        console.error('Error deleting plate:', error);
+        toast.error('Ошибка при удалении номера');
+      }
     }
-  }
-};
+  };
 
   const handleToggleActive = async (plate: ApprovedPlate) => {
     const newStatus = !plate.isActive;
@@ -271,7 +317,6 @@ export default function AdminApprovedPlatesPage() {
     return organizations.find(o => o.id === orgId)?.name || 'Неизвестная организация';
   };
 
-
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -285,35 +330,6 @@ export default function AdminApprovedPlatesPage() {
 
   return (
     <div className={styles.container}>
-      {/* Верхняя панель */}
-      {/* <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.headerLeft}>
-            <Link href="/admin" className={styles.backLink}>
-              <i className="ri-arrow-left-line"></i>
-              <span>К дашборду</span>
-            </Link>
-            <div>
-              <h1 className={styles.title}>Управление номерами</h1>
-              <p className={styles.subtitle}>
-                Прямое добавление, редактирование и удаление номеров в списках
-              </p>
-            </div>
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.roleBadge}>
-              Администратор
-            </span>
-            <button
-              onClick={handleLogout}
-              className={styles.logoutButton}
-            >
-              <i className="ri-logout-box-line"></i>
-              <span>Выйти</span>
-            </button>
-          </div>
-        </div>
-      </header> */}
       <Header role='admin'/>
 
       <main className={styles.main}>
@@ -375,7 +391,6 @@ export default function AdminApprovedPlatesPage() {
               onClick={openAddModal}
               className={styles.addButton}
             >
-              {/* <i className="ri-add-line"></i> */}
               <span>Добавить номер</span>
             </button>
           </div>
@@ -494,16 +509,33 @@ export default function AdminApprovedPlatesPage() {
                   Государственный номер <span className={styles.required}>*</span>
                 </label>
                 <input
-  type="text"
-  id="plateNumber"
-  name="plateNumber"
-  value={formData.plateNumber}
-  onChange={handleFormChange}
-  className={styles.input}
-  placeholder="123ABC01"
-  required
-  style={{ textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '1px' }}
-/>
+                  type="text"
+                  id="plateNumber"
+                  name="plateNumber"
+                  value={formData.plateNumber}
+                  onChange={handleFormChange}
+                  className={styles.input}
+                  placeholder="A123BC177"
+                  required
+                  maxLength={10}
+                  style={{ 
+                    textTransform: 'uppercase', 
+                    fontFamily: 'monospace', 
+                    letterSpacing: '1px',
+                    fontSize: '1.1em'
+                  }}
+                  pattern="[A-Z0-9]+"
+                  title="Только заглавные латинские буквы и цифры без пробелов"
+                  autoComplete="off"
+                  onKeyDown={(e) => {
+                    if (e.key === ' ') {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <small style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                  Формат: латинские буквы и цифры без пробелов (A123BC177)
+                </small>
               </div>
 
               <div className={styles.formRow}>

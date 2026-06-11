@@ -24,10 +24,9 @@ export default function NewUserPage() {
     email: '',
     phone: '',
     organizationId: '',
-    roleId: '4', // По умолчанию "Участник"
+    roleId: '4',
   });
 
-  // Загружаем список организаций и списков доступа при монтировании
   useEffect(() => {
     fetchOrganizations();
     fetchAccessLists();
@@ -57,7 +56,7 @@ export default function NewUserPage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Если роль меняется на ту, которой не нужны списки, сбрасываем выбранные списки
+    // Сбрасываем списки только для ролей которым они не нужны
     if (name === 'roleId' && value !== '4' && value !== '2') {
       setSelectedLists([]);
     }
@@ -84,47 +83,17 @@ export default function NewUserPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Валидация
-    if (!formData.username.trim()) {
-      toast.error('Введите логин');
-      return;
-    }
-    
-    if (formData.username.length < 3) {
-      toast.error('Логин должен содержать минимум 3 символа');
-      return;
-    }
-    
-    if (!formData.password.trim()) {
-      toast.error('Введите пароль');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      toast.error('Пароль должен содержать минимум 6 символов');
-      return;
-    }
-    
-    if (!formData.fullName.trim()) {
-      toast.error('Введите ФИО');
-      return;
-    }
-    
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      toast.error('Введите корректный email');
-      return;
-    }
-
-    // Для участника обязательно выбрать организацию
-    if (formData.roleId === '4' && !formData.organizationId) {
-      toast.error('Для участника необходимо выбрать организацию');
-      return;
-    }
+    if (!formData.username.trim()) { toast.error('Введите логин'); return; }
+    if (formData.username.length < 3) { toast.error('Логин должен содержать минимум 3 символа'); return; }
+    if (!formData.password.trim()) { toast.error('Введите пароль'); return; }
+    if (formData.password.length < 6) { toast.error('Пароль должен содержать минимум 6 символов'); return; }
+    if (!formData.fullName.trim()) { toast.error('Введите ФИО'); return; }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { toast.error('Введите корректный email'); return; }
+    if (formData.roleId === '4' && !formData.organizationId) { toast.error('Для участника необходимо выбрать организацию'); return; }
 
     try {
       setLoading(true);
       
-      // Создаем пользователя
       const newUser = await userService.create({
         username: formData.username,
         password: formData.password,
@@ -135,7 +104,7 @@ export default function NewUserPage() {
         roleId: parseInt(formData.roleId),
       });
       
-      // Если это участник или оператор КПП 1 и выбраны списки, добавляем разрешения
+      // Права на списки только для участника и оператора
       if ((formData.roleId === '4' || formData.roleId === '2') && selectedLists.length > 0) {
         try {
           for (const listId of selectedLists) {
@@ -152,14 +121,9 @@ export default function NewUserPage() {
       router.push(`/admin/users/${newUser.id}`);
     } catch (error: unknown) {
       console.error('Error creating user:', error);
-      
       if (error && typeof error === 'object' && 'response' in error) {
         const apiError = error as ApiError;
-        if (apiError.response?.data?.error) {
-          toast.error(apiError.response.data.error);
-        } else {
-          toast.error('Ошибка при создании пользователя');
-        }
+        toast.error(apiError.response?.data?.error || 'Ошибка при создании пользователя');
       } else if (error instanceof Error) {
         toast.error(error.message);
       } else {
@@ -170,262 +134,100 @@ export default function NewUserPage() {
     }
   };
 
-  // const getRoleName = (roleId: string) => {
-  //   switch (parseInt(roleId)) {
-  //     case 1: return 'Администратор';
-  //     case 2: return 'Оператор КПП 1';
-  //     case 3: return 'Руководитель';
-  //     case 4: return 'Участник';
-  //     case 5: return 'Охрана';
-  //     case 6: return 'Оператор SmartParking';
-  //     default: return 'Неизвестно';
-  //   }
-  // };
-
-  // const getRoleDescription = (roleId: string) => {
-  //   switch (parseInt(roleId)) {
-  //     case 1: return 'Полный доступ ко всем функциям системы';
-  //     case 2: return 'Обработка заявок на КПП 1, просмотр назначенных списков';
-  //     case 3: return 'Финальное утверждение заявок после оператора';
-  //     case 4: return 'Подача заявок на пропуск (требуется организация и списки)';
-  //     case 5: return 'Просмотр списков пропусков и истории проездов';
-  //     case 6: return 'Обработка заявок на SmartParking, интеграция с Parqour';
-  //     default: return '';
-  //   }
-  // };
-
-  // Показываем выбор списков для участника (4) и оператора КПП 1 (2)
+  // Списки показываем только для участника и оператора (не для менеджера пропусков)
   const showListSelection = formData.roleId === '4' || formData.roleId === '2';
-
-  // Показываем выбор организации только для участника (4)
   const showOrganizationSelection = formData.roleId === '4';
 
   return (
     <div className={styles.container}>
       <Header role='admin'/>
 
-      {/* Форма */}
       <div className={styles.main}>
         <div className={styles.formCard}>
           <form onSubmit={handleSubmit} className={styles.form}>
-            {/* Логин */}
             <div className={styles.formGroup}>
-              <label htmlFor="username" className={styles.label}>
-                Логин <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="ivanov_i"
-                disabled={loading}
-                required
-              />
+              <label htmlFor="username" className={styles.label}>Логин <span className={styles.required}>*</span></label>
+              <input type="text" id="username" name="username" value={formData.username} onChange={handleChange} className={styles.input} placeholder="ivanov_i" disabled={loading} required />
               <p className={styles.help}>Минимум 3 символа</p>
             </div>
 
-            {/* Пароль */}
             <div className={styles.formGroup}>
-              <label htmlFor="password" className={styles.label}>
-                Пароль <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="••••••••"
-                disabled={loading}
-                required
-              />
+              <label htmlFor="password" className={styles.label}>Пароль <span className={styles.required}>*</span></label>
+              <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className={styles.input} placeholder="••••••••" disabled={loading} required />
               <p className={styles.help}>Минимум 6 символов</p>
             </div>
 
-            {/* ФИО */}
             <div className={styles.formGroup}>
-              <label htmlFor="fullName" className={styles.label}>
-                ФИО <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="Иванов Иван Иванович"
-                disabled={loading}
-                required
-              />
+              <label htmlFor="fullName" className={styles.label}>ФИО <span className={styles.required}>*</span></label>
+              <input type="text" id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} className={styles.input} placeholder="Иванов Иван Иванович" disabled={loading} required />
             </div>
 
-            {/* Роль */}
             <div className={styles.formGroup}>
-              <label htmlFor="roleId" className={styles.label}>
-                Роль <span className={styles.required}>*</span>
-              </label>
-              <select
-                id="roleId"
-                name="roleId"
-                value={formData.roleId}
-                onChange={handleChange}
-                className={styles.select}
-                disabled={loading}
-                required
-              >
+              <label htmlFor="roleId" className={styles.label}>Роль <span className={styles.required}>*</span></label>
+              <select id="roleId" name="roleId" value={formData.roleId} onChange={handleChange} className={styles.select} disabled={loading} required>
                 <option value="1">Администратор</option>
                 <option value="2">Оператор КПП 1</option>
                 <option value="6">Оператор SmartParking</option>
                 <option value="3">Руководитель</option>
                 <option value="4">Участник</option>
                 <option value="5">Охрана</option>
+                <option value="7">Менеджер пропусков</option>
               </select>
-              {/* <p className={styles.roleDescription}>
-                {getRoleDescription(formData.roleId)}
-              </p> */}
             </div>
 
-            {/* Организация (только для участника) */}
             {showOrganizationSelection && (
               <div className={styles.formGroup}>
-                <label htmlFor="organizationId" className={styles.label}>
-                  Организация <span className={styles.required}>*</span>
-                </label>
-                <select
-                  id="organizationId"
-                  name="organizationId"
-                  value={formData.organizationId}
-                  onChange={handleChange}
-                  className={styles.select}
-                  disabled={loading || organizations?.length === 0}
-                  required
-                >
+                <label htmlFor="organizationId" className={styles.label}>Организация <span className={styles.required}>*</span></label>
+                <select id="organizationId" name="organizationId" value={formData.organizationId} onChange={handleChange} className={styles.select} disabled={loading || organizations?.length === 0} required>
                   <option value="">Выберите организацию</option>
                   {organizations?.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name} ({org.bin})
-                    </option>
+                    <option key={org.id} value={org.id}>{org.name} ({org.bin})</option>
                   ))}
                 </select>
                 {organizations?.length === 0 && (
-                  <p className={styles.error}>
-                    Нет доступных организаций. 
-                    <Link href="/admin/organizations/new" className={styles.errorLink}>
-                      Создайте организацию
-                    </Link>
-                  </p>
+                  <p className={styles.error}>Нет доступных организаций. <Link href="/admin/organizations/new" className={styles.errorLink}>Создайте организацию</Link></p>
                 )}
               </div>
             )}
 
-            {/* Списки доступа (для участника и оператора КПП 1) */}
             {showListSelection && accessLists?.length > 0 && (
               <div className={styles.formGroup}>
                 <div className={styles.listsHeader}>
                   <label className={styles.label}>
                     {formData.roleId === '2' ? 'Списки для просмотра' : 'Списки для подачи заявок'}
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    className={styles.selectAllButton}
-                    disabled={loading}
-                  >
+                  <button type="button" onClick={handleSelectAll} className={styles.selectAllButton} disabled={loading}>
                     {selectedLists.length === accessLists.length ? 'Снять все' : 'Выбрать все'}
                   </button>
                 </div>
                 <div className={styles.listsGrid}>
                   {accessLists.map((list) => (
-                    <label
-                      key={list.id}
-                      className={styles.listItem}
-                      style={{
-                        borderColor: selectedLists.includes(list.id) ? list.color : '#e5e7eb',
-                        backgroundColor: selectedLists.includes(list.id) ? `${list.color}10` : 'white',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedLists.includes(list.id)}
-                        onChange={() => handleListToggle(list.id)}
-                        className={styles.listCheckbox}
-                        disabled={loading}
-                      />
+                    <label key={list.id} className={styles.listItem}
+                      style={{ borderColor: selectedLists.includes(list.id) ? list.color : '#e5e7eb', backgroundColor: selectedLists.includes(list.id) ? `${list.color}10` : 'white' }}>
+                      <input type="checkbox" checked={selectedLists.includes(list.id)} onChange={() => handleListToggle(list.id)} className={styles.listCheckbox} disabled={loading} />
                       <span className={styles.listColor} style={{ backgroundColor: list.color }}></span>
                       <div className={styles.listInfo}>
                         <span className={styles.listName}>{list.name}</span>
-                        {list.description && (
-                          <span className={styles.listDescription}>{list.description}</span>
-                        )}
+                        {list.description && <span className={styles.listDescription}>{list.description}</span>}
                       </div>
-                      {list.priority !== undefined && (
-                        <span className={styles.listPriority}>Приоритет: {list.priority}</span>
-                      )}
+                      {list.priority !== undefined && <span className={styles.listPriority}>Приоритет: {list.priority}</span>}
                     </label>
                   ))}
                 </div>
-                <p className={styles.help}>
-                  Выбрано списков: {selectedLists.length} из {accessLists.length}
-                </p>
+                <p className={styles.help}>Выбрано списков: {selectedLists.length} из {accessLists.length}</p>
               </div>
             )}
 
-            {/* Информация для оператора SmartParking */}
-            {/* {formData.roleId === '6' && (
-              <div className={styles.infoBox} style={{ backgroundColor: '#d1fae5', borderColor: '#059669' }}>
-                <i className="ri-parking-box-line" style={{ color: '#059669' }}></i>
-                <div className={styles.infoContent}>
-                  <p className={styles.infoTitle}>Оператор SmartParking:</p>
-                  <ul className={styles.infoList}>
-                    <li>Видит только заявки с пометкой SmartParking</li>
-                    <li>При одобрении номер автоматически отправляется в систему Parqour</li>
-                    <li>Не требует утверждения руководителем</li>
-                    <li>Не требует привязки к организации или спискам</li>
-                  </ul>
-                </div>
-              </div>
-            )} */}
-
-            {/* Email (для всех ролей) */}
             <div className={styles.formGroup}>
-              <label htmlFor="email" className={styles.label}>
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="ivan.ivanov@example.com"
-                disabled={loading}
-              />
+              <label htmlFor="email" className={styles.label}>Email</label>
+              <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className={styles.input} placeholder="ivan.ivanov@example.com" disabled={loading} />
             </div>
 
-            {/* Телефон (для всех ролей) */}
             <div className={styles.formGroup}>
-              <label htmlFor="phone" className={styles.label}>
-                Телефон
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="+7 (777) 123-45-67"
-                disabled={loading}
-              />
+              <label htmlFor="phone" className={styles.label}>Телефон</label>
+              <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} className={styles.input} placeholder="+7 (777) 123-45-67" disabled={loading} />
             </div>
 
-            {/* Информация о ролях */}
             <div className={styles.infoBox}>
               <i className="ri-information-line"></i>
               <div className={styles.infoContent}>
@@ -437,33 +239,18 @@ export default function NewUserPage() {
                   <li><strong>Руководитель</strong> - финальное утверждение заявок КПП 1</li>
                   <li><strong>Участник</strong> - подача заявок (требуется организация и списки)</li>
                   <li><strong>Охрана</strong> - просмотр списков и истории</li>
+                  <li><strong>Менеджер пропусков</strong> - управление номерами во всех списках (без управления списками)</li>
                 </ul>
               </div>
             </div>
 
-            {/* Кнопки */}
             <div className={styles.formActions}>
-              <Link
-                href="/admin/users"
-                className={styles.cancelButton}
-              >
-                Отмена
-              </Link>
-              <button
-                type="submit"
-                className={styles.submitButton}
-                disabled={loading}
-              >
+              <Link href="/admin/users" className={styles.cancelButton}>Отмена</Link>
+              <button type="submit" className={styles.submitButton} disabled={loading}>
                 {loading ? (
-                  <>
-                    <i className="ri-loader-4-line ri-spin"></i>
-                    <span>Создание...</span>
-                  </>
+                  <><i className="ri-loader-4-line ri-spin"></i><span>Создание...</span></>
                 ) : (
-                  <>
-                    <i className="ri-user-add-line"></i>
-                    <span>Создать пользователя</span>
-                  </>
+                  <><i className="ri-user-add-line"></i><span>Создать пользователя</span></>
                 )}
               </button>
             </div>

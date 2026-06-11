@@ -291,7 +291,7 @@ export default function AdminDashboard() {
             
             <span className={styles.actionText}>
               
-              Удаленные номера участников
+              Удаленные номера
               </span>
             </Link>
           </div>

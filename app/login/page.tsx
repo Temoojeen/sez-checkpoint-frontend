@@ -16,6 +16,7 @@ const LoginPage = () => {
     password: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -75,6 +76,10 @@ const LoginPage = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(prev => !prev);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -142,12 +147,12 @@ const LoginPage = () => {
               <div className={styles.login__badge}>
                 <span>
                   <Image
-  src="/assets/images/logo.png"
-  alt="Logo" // Provide a meaningful alt text for accessibility
-  className={styles.logo_img}
-  width={100} // Required: specify the image width in pixels
-  height={100} // Required: specify the image height in pixels
-/>
+                    src="/assets/images/logo.png"
+                    alt="Logo"
+                    className={styles.logo_img}
+                    width={100}
+                    height={100}
+                  />
                 </span>
               </div>
               <h2 className={styles.login__title}>
@@ -184,7 +189,7 @@ const LoginPage = () => {
                 <div className={styles.login__box}>
                   <i className={`ri-lock-2-line ${styles.login__icon}`}></i>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
@@ -195,9 +200,19 @@ const LoginPage = () => {
                     id="password"
                     disabled={isSubmitting}
                   />
+                  <button
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className={styles.password__toggle}
+                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                    tabIndex={-1}
+                  >
+                    <i className={`ri-${showPassword ? 'eye-off' : 'eye'}-line`}></i>
+                  </button> {!formData.password &&
+                  
                   <label htmlFor="password" className={styles.login__label}>
                     Пароль
-                  </label>
+                  </label>}
                   <div className={styles.input__border}></div>
                 </div>
               </div>

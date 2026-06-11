@@ -29,6 +29,8 @@ export default function UsersPage() {
     supervisors: 0,
     participants: 0,
     security: 0,
+    smartParking: 0,
+    passManagers: 0,
     active: 0,
     inactive: 0,
   });
@@ -65,6 +67,8 @@ export default function UsersPage() {
         supervisors: usersData.filter(u => u.roleId === 3).length,
         participants: usersData.filter(u => u.roleId === 4).length,
         security: usersData.filter(u => u.roleId === 5).length,
+        smartParking: usersData.filter(u => u.roleId === 6).length,
+        passManagers: usersData.filter(u => u.roleId === 7).length,
         active: usersData.filter(u => u.isActive).length,
         inactive: usersData.filter(u => !u.isActive).length,
       };
@@ -80,8 +84,8 @@ export default function UsersPage() {
 
   const handleToggleActive = async (id: string, isActive: boolean, name: string) => {
     try {
-      await userService.update(id, { isActive: !isActive });
       console.log(name)
+      await userService.update(id, { isActive: !isActive });
       toast.success(`Пользователь ${!isActive ? 'активирован' : 'деактивирован'}`);
       fetchData();
     } catch (error) {
@@ -196,59 +200,32 @@ export default function UsersPage() {
           <div className={styles.filtersGrid}>
             <div className={styles.searchBox}>
               <i className={`ri-search-line ${styles.searchIcon}`}></i>
-              <input
-                type="text"
-                placeholder="Поиск по имени, email или телефону..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={styles.searchInput}
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className={styles.clearSearch}
-                >
-                  <i className="ri-close-line"></i>
-                </button>
-              )}
+              <input type="text" placeholder="Поиск по имени, email или телефону..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={styles.searchInput} />
+              {searchTerm && <button onClick={() => setSearchTerm('')} className={styles.clearSearch}><i className="ri-close-line"></i></button>}
             </div>
 
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className={styles.select}
-            >
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} className={styles.select}>
               <option value="all">Все роли</option>
               <option value="1">Администраторы</option>
-              <option value="2">Операторы</option>
+              <option value="2">Операторы КПП 1</option>
+              <option value="6">Операторы SmartParking</option>
               <option value="3">Руководители</option>
               <option value="4">Участники</option>
               <option value="5">Охрана</option>
+              <option value="7">Менеджеры пропусков</option>
             </select>
 
-            <select
-              value={orgFilter}
-              onChange={(e) => setOrgFilter(e.target.value)}
-              className={styles.select}
-            >
+            <select value={orgFilter} onChange={(e) => setOrgFilter(e.target.value)} className={styles.select}>
               <option value="all">Все организации</option>
               {organizations?.map(org => (
-                <option key={org.id} value={org.id}>
-                  {org.name}
-                </option>
+                <option key={org.id} value={org.id}>{org.name}</option>
               ))}
             </select>
           </div>
 
           {(searchTerm || roleFilter !== 'all' || orgFilter !== 'all') && (
             <div className={styles.filtersActions}>
-              <button
-                onClick={handleClearFilters}
-                className={styles.clearFiltersButton}
-              >
-                <i className="ri-close-line"></i>
-                Сбросить фильтры
-              </button>
+              <button onClick={handleClearFilters} className={styles.clearFiltersButton}><i className="ri-close-line"></i>Сбросить фильтры</button>
             </div>
           )}
         </div>
@@ -275,88 +252,24 @@ export default function UsersPage() {
                   
                   return (
                     <tr key={userItem.id}>
-                      <td>
-                        <div className={styles.userInfo}>
-                          <span className={styles.userName}>{userItem.fullName}</span>
-                          <span className={styles.userUsername}>@{userItem.username}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span 
-                          className={styles.roleBadge}
-                          style={{ 
-                            backgroundColor: `${roleColor}20`, 
-                            color: roleColor 
-                          }}
-                        >
-                          {roleName}
-                        </span>
-                      </td>
-                      <td>
-                        {orgName ? (
-                          <span className={styles.organizationName}>
-                            <i className="ri-building-4-line"></i>
-                            {orgName}
-                          </span>
-                        ) : (
-                          <span className={styles.organizationName}>—</span>
-                        )}
-                      </td>
+                      <td><div className={styles.userInfo}><span className={styles.userName}>{userItem.fullName}</span><span className={styles.userUsername}>@{userItem.username}</span></div></td>
+                      <td><span className={styles.roleBadge} style={{ backgroundColor: `${roleColor}20`, color: roleColor }}>{roleName}</span></td>
+                      <td>{orgName ? <span className={styles.organizationName}><i className="ri-building-4-line"></i>{orgName}</span> : <span className={styles.organizationName}>—</span>}</td>
                       <td>
                         <div className={styles.contactInfo}>
-                          {userItem.email && (
-                            <span className={styles.contactItem}>
-                              <i className="ri-mail-line"></i>
-                              {userItem.email}
-                            </span>
-                          )}
-                          {userItem.phone && (
-                            <span className={styles.contactItem}>
-                              <i className="ri-phone-line"></i>
-                              {userItem.phone}
-                            </span>
-                          )}
-                          {!userItem.email && !userItem.phone && (
-                            <span className={styles.contactItem}>—</span>
-                          )}
+                          {userItem.email && <span className={styles.contactItem}><i className="ri-mail-line"></i>{userItem.email}</span>}
+                          {userItem.phone && <span className={styles.contactItem}><i className="ri-phone-line"></i>{userItem.phone}</span>}
+                          {!userItem.email && !userItem.phone && <span className={styles.contactItem}>—</span>}
                         </div>
                       </td>
-                      <td>
-                        <span className={`${styles.statusBadge} ${userItem.isActive ? styles.statusActive : styles.statusInactive}`}>
-                          {userItem.isActive ? 'Активен' : 'Неактивен'}
-                        </span>
-                      </td>
+                      <td><span className={`${styles.statusBadge} ${userItem.isActive ? styles.statusActive : styles.statusInactive}`}>{userItem.isActive ? 'Активен' : 'Неактивен'}</span></td>
                       <td>{formatDate(userItem.createdAt)}</td>
                       <td>
                         <div className={styles.actionButtons}>
-                          <Link
-                            href={`/admin/users/${userItem.id}`}
-                            className={`${styles.actionButton} ${styles.viewButton}`}
-                            title="Просмотр"
-                          >
-                            <i className="ri-eye-line"></i>
-                          </Link>
-                          <Link
-                            href={`/admin/users/${userItem.id}/edit`}
-                            className={`${styles.actionButton} ${styles.editButton}`}
-                            title="Редактировать"
-                          >
-                            <i className="ri-pencil-line"></i>
-                          </Link>
-                          <button
-                            onClick={() => handleToggleActive(userItem.id, userItem.isActive, userItem.fullName)}
-                            className={`${styles.actionButton} ${userItem.isActive ? styles.warnButton : styles.successButton}`}
-                            title={userItem.isActive ? 'Деактивировать' : 'Активировать'}
-                          >
-                            <i className={userItem.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'}></i>
-                          </button>
-                          <button
-                            onClick={() => handleHardDelete(userItem.id, userItem.fullName)}
-                            className={`${styles.actionButton} ${styles.deleteButton}`}
-                            title="Удалить полностью"
-                          >
-                            <i className="ri-delete-bin-line"></i>
-                          </button>
+                          <Link href={`/admin/users/${userItem.id}`} className={`${styles.actionButton} ${styles.viewButton}`} title="Просмотр"><i className="ri-eye-line"></i></Link>
+                          <Link href={`/admin/users/${userItem.id}/edit`} className={`${styles.actionButton} ${styles.editButton}`} title="Редактировать"><i className="ri-pencil-line"></i></Link>
+                          <button onClick={() => handleToggleActive(userItem.id, userItem.isActive, userItem.fullName)} className={`${styles.actionButton} ${userItem.isActive ? styles.warnButton : styles.successButton}`} title={userItem.isActive ? 'Деактивировать' : 'Активировать'}><i className={userItem.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'}></i></button>
+                          <button onClick={() => handleHardDelete(userItem.id, userItem.fullName)} className={`${styles.actionButton} ${styles.deleteButton}`} title="Удалить полностью"><i className="ri-delete-bin-line"></i></button>
                         </div>
                       </td>
                     </tr>
@@ -368,29 +281,14 @@ export default function UsersPage() {
             <div className={styles.emptyState}>
               <i className="ri-user-search-line"></i>
               <h3 className={styles.emptyStateTitle}>Пользователи не найдены</h3>
-              <p className={styles.emptyStateText}>
-                {searchTerm || roleFilter !== 'all' || orgFilter !== 'all'
-                  ? 'Попробуйте изменить параметры фильтрации'
-                  : 'В системе пока нет пользователей'}
-              </p>
-              {(searchTerm || roleFilter !== 'all' || orgFilter !== 'all') && (
-                <button
-                  onClick={handleClearFilters}
-                  className={styles.clearFiltersButton}
-                >
-                  <i className="ri-close-line"></i>
-                  Сбросить фильтры
-                </button>
-              )}
+              <p className={styles.emptyStateText}>{searchTerm || roleFilter !== 'all' || orgFilter !== 'all' ? 'Попробуйте изменить параметры фильтрации' : 'В системе пока нет пользователей'}</p>
+              {(searchTerm || roleFilter !== 'all' || orgFilter !== 'all') && <button onClick={handleClearFilters} className={styles.clearFiltersButton}><i className="ri-close-line"></i>Сбросить фильтры</button>}
             </div>
           )}
         </div>
 
         <div style={{ marginTop: '2rem', textAlign: 'right' }}>
-          <Link href="/admin/users/new" className={styles.createButton}>
-            <i className="ri-user-add-line"></i>
-            <span>Создать нового пользователя</span>
-          </Link>
+          <Link href="/admin/users/new" className={styles.createButton}><i className="ri-user-add-line"></i><span>Создать нового пользователя</span></Link>
         </div>
       </main>
     </div>

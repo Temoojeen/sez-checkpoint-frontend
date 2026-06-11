@@ -420,3 +420,29 @@
   transition: background-color 5000s ease-in-out 0s;
   box-shadow: inset 0 0 20px 20px rgba(0, 0, 0, 0.3);
 }
+/* Стили для кнопки показать/скрыть пароль */
+.password__toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b8b8b;
+  transition: color 0.3s ease;
+  z-index: 10;
+}
+
+.password__toggle:hover {
+  color: #4a90e2;
+}
+
+.password__toggle i {
+  font-size: 20px;
+  line-height: 1;
+}

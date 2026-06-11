@@ -201,7 +201,8 @@ const searchQuery = cleanPlate.length >= 3 ? cleanPlate.slice(0, 3) : cleanPlate
         }
       }
     } catch (error) {
-      toast.error('Ошибка при проверке номера',error);
+      toast.error('Ошибка при проверке номера');
+      console.log(error)
     } finally {
       setSearchLoading(false);
     }
@@ -265,15 +266,19 @@ const searchQuery = cleanPlate.length >= 3 ? cleanPlate.slice(0, 3) : cleanPlate
         const logs: ApiLog[] = await response.json();
         if (logs && Array.isArray(logs) && logs.length > 0) {
           startTransition(() => setRecentLogs(logs.map(log => ({
-            id: log.id, plateNumber: log.plateNumber, organizationName: log.organizationName,
-            listName: log.listName, listColor: log.listColor, timestamp: new Date(log.createdAt),
-            status: log.accessGranted ? 'granted' : 'denied', isActive: log.accessGranted, message: log.message,
+            id: log.id,
+            plateNumber: log.plateNumber,
+            organizationName: log.organizationName,
+            listName: log.listName,
+            listColor: log.listColor,
+            timestamp: new Date(log.createdAt),
+            status: (log.accessGranted ? 'granted' : 'denied') as 'granted' | 'denied',
+            isActive: log.accessGranted,
+            message: log.message,
           })).slice(0, 5)));
         } else { startTransition(() => setRecentLogs([])); }
       }
-    } catch (error) { startTransition(() => setRecentLogs([])); 
-      console.log(error)
-    }
+    } catch (error) { startTransition(() => setRecentLogs([])); console.error(error); }
   }, [startTransition]);
 
   const loadTodayStats = useCallback(async () => {

@@ -1,0 +1,206 @@
+/* components/CustomAutocomplete.module.css */
+
+.wrapper {
+  position: relative;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.inputWrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 44px;
+}
+
+.inputWrapper:focus-within {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.disabled .inputWrapper {
+  background: transparent;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.selectedValue {
+  flex: 1;
+  font-size: 14px;
+  color: #1e293b;
+  padding: 2px 4px;
+  font-family: inherit;
+}
+
+.input {
+  flex: 1;
+  width: 100%;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+
+  font-size: 14px;
+  font-family: inherit;
+  color: #1e293b;
+  padding: 2px 4px;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.input:focus,
+.input:active {
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.input::placeholder {
+  color: #94a3b8;
+}
+
+.icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.clearButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.clearButton:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: #64748b;
+}
+
+.arrowButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 10px;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.arrowButton:hover:not(:disabled) {
+  color: #64748b;
+}
+
+.arrowButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.arrowOpen {
+  transform: rotate(180deg);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+              0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+  padding: 8px;
+  animation: slideDown 0.15s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.option {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #334155;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.option:hover {
+  background: #f1f5f9;
+}
+
+.highlighted {
+  background: #f1f5f9;
+}
+
+.selected {
+  background: #e0e7ff;
+  color: #4f46e5;
+  font-weight: 500;
+}
+
+.noOptions {
+  padding: 12px;
+  font-size: 14px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dropdown::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.dropdown::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

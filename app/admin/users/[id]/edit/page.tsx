@@ -44,6 +44,10 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     confirmPassword: '',
   });
 
+  // Состояния для видимости паролей
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   // Проверка прав доступа
   useEffect(() => {
     if (currentUser && currentUser.roleId !== 1) {
@@ -476,16 +480,27 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                   <label htmlFor="newPassword">
                     Новый пароль <span className={styles.required}>*</span>
                   </label>
-                  <input
-                    type="password"
-                    id="newPassword"
-                    name="newPassword"
-                    value={passwordForm.newPassword}
-                    onChange={handlePasswordChange}
-                    className={`${styles.input} ${passwordErrors.newPassword ? styles.inputError : ''}`}
-                    placeholder="Минимум 6 символов"
-                    disabled={saving}
-                  />
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      id="newPassword"
+                      name="newPassword"
+                      value={passwordForm.newPassword}
+                      onChange={handlePasswordChange}
+                      className={`${styles.input} ${passwordErrors.newPassword ? styles.inputError : ''}`}
+                      placeholder="Минимум 6 символов"
+                      disabled={saving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className={styles.passwordToggle}
+                      aria-label={showNewPassword ? "Скрыть пароль" : "Показать пароль"}
+                      tabIndex={-1}
+                    >
+                      <i className={`ri-${showNewPassword ? 'eye-off' : 'eye'}-line`}></i>
+                    </button>
+                  </div>
                   {passwordErrors.newPassword && (
                     <p className={styles.errorText}>{passwordErrors.newPassword}</p>
                   )}
@@ -495,16 +510,27 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                   <label htmlFor="confirmPassword">
                     Подтвердите пароль <span className={styles.required}>*</span>
                   </label>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={passwordForm.confirmPassword}
-                    onChange={handlePasswordChange}
-                    className={`${styles.input} ${passwordErrors.confirmPassword ? styles.inputError : ''}`}
-                    placeholder="Введите пароль еще раз"
-                    disabled={saving}
-                  />
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      value={passwordForm.confirmPassword}
+                      onChange={handlePasswordChange}
+                      className={`${styles.input} ${passwordErrors.confirmPassword ? styles.inputError : ''}`}
+                      placeholder="Введите пароль еще раз"
+                      disabled={saving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className={styles.passwordToggle}
+                      aria-label={showConfirmPassword ? "Скрыть пароль" : "Показать пароль"}
+                      tabIndex={-1}
+                    >
+                      <i className={`ri-${showConfirmPassword ? 'eye-off' : 'eye'}-line`}></i>
+                    </button>
+                  </div>
                   {passwordErrors.confirmPassword && (
                     <p className={styles.errorText}>{passwordErrors.confirmPassword}</p>
                   )}

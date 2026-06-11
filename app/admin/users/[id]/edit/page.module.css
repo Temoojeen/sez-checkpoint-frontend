@@ -24,6 +24,7 @@
 
 /* Общие стили */
 .container {
+  padding-top: 100px;
   min-height: 100vh;
   background: linear-gradient(135deg, var(--background) 0%, #f1f5f9 100%);
 }
@@ -867,4 +868,53 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+/* Обертка для поля ввода пароля с кнопкой */
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInputWrapper .input {
+  padding-right: 45px; /* Освобождаем место для кнопки */
+}
+
+/* Кнопка показать/скрыть пароль */
+.passwordToggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  z-index: 10;
+  border-radius: 4px;
+}
+
+.passwordToggle:hover {
+  color: #4f46e5;
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.passwordToggle:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.passwordToggle i {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* Если используете не Remix Icon, а обычные символы */
+.passwordToggle {
+  font-size: 18px;
 }
