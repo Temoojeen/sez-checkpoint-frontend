@@ -111,16 +111,28 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  // Функция копирования в буфер обмена
-  const copyToClipboard = async (text: string, label: string = 'Текст') => {
-    try {
+const copyToClipboard = async (text: string, label: string = 'Текст') => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
-      toast.success(`${label} скопирован в буфер обмена`);
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast.error('Ошибка при копировании');
+    } else {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
     }
-  };
+    toast.success(`${label} скопирован в буфер обмена`);
+  } catch (error) {
+    console.error('Error copying to clipboard:', error);
+    toast.error('Ошибка при копировании');
+  }
+};
 
   const handleEdit = () => {
     setIsEditing(true);

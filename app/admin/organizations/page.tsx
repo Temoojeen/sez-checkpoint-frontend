@@ -105,32 +105,48 @@ export default function OrganizationsPage() {
     }
   };
 
-  const handleCopy = async () => {
-    if (!shareData) return;
-    const newPassword = generatePassword();
-    setGeneratedPassword(newPassword);
+const handleCopy = async () => {
+  if (!shareData) return;
+  const newPassword = generatePassword();
+  setGeneratedPassword(newPassword);
 
-    try {
-      const usersRes = await api.get<UserData[]>(`/admin/organizations/${shareData.orgId}/users`);
-      const users = usersRes.data || [];
-      const participant = users.find((u) => u.roleId === 4 && u.isActive);
-      if (participant) {
-        await api.put(`/admin/users/${participant.id}/password`, { password: newPassword });
-      }
-    } catch (error) {
-      console.error('Error updating password:', error);
+  try {
+    const usersRes = await api.get<UserData[]>(`/admin/organizations/${shareData.orgId}/users`);
+    const users = usersRes.data || [];
+    const participant = users.find((u) => u.roleId === 4 && u.isActive);
+    if (participant) {
+      await api.put(`/admin/users/${participant.id}/password`, { password: newPassword });
     }
+  } catch (error) {
+    console.error('Error updating password:', error);
+  }
 
-    const text = `Логин: ${shareData.username}\nПароль: ${newPassword}\nНомер договора: ${shareData.contractNumber}`;
-    try {
+  const text = `Логин: ${shareData.username}\nПароль: ${newPassword}\nНомер договора: ${shareData.contractNumber}\nkpp1.sezkhorgos.kz`;
+  
+  try {
+    // Пробуем современный метод
+    if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      toast.success('Скопировано и пароль обновлён');
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error('Ошибка при копировании');
+    } else {
+      // Фолбэк для HTTP
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
     }
-  };
+    setCopied(true);
+    toast.success('Скопировано и пароль обновлён');
+    setTimeout(() => setCopied(false), 2000);
+  } catch {
+    toast.error('Ошибка при копировании');
+  }
+};
 
   const handleDelete = async (id: string, name: string) => {
     const reason = window.prompt(

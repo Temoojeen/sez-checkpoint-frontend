@@ -80,16 +80,29 @@ export default function ContractsPage() {
     }
   };
 
-  // Функция копирования в буфер обмена
-  const copyToClipboard = async (text: string, label: string = 'Текст') => {
-    try {
+const copyToClipboard = async (text: string, label: string = 'Текст') => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
-      toast.success(`${label} скопирован в буфер обмена`);
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast.error('Ошибка при копировании');
+    } else {
+      // Фолбэк для HTTP
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
     }
-  };
+    toast.success(`${label} скопирован в буфер обмена`);
+  } catch (error) {
+    console.error('Error copying to clipboard:', error);
+    toast.error('Ошибка при копировании');
+  }
+};
 
   const handleDelete = async (id: string, contractNumber: string) => {
     if (window.confirm(`Вы уверены, что хотите удалить договор "${contractNumber}"?`)) {
@@ -192,6 +205,20 @@ export default function ContractsPage() {
       <Header role='admin'/>
 
       <main className={styles.main}>
+        {/* Верхняя панель с заголовком и кнопкой создания */}
+        <div className={styles.pageHeader}>
+          <div className={styles.pageHeaderLeft}>
+            <h2 className={styles.pageTitle}>Управление договорами</h2>
+            <p className={styles.pageSubtitle}>
+              Всего договоров: <span className={styles.contractCount}>{stats.total}</span>
+            </p>
+          </div>
+          <Link href="/admin/contracts/new" className={styles.createButton}>
+            <i className="ri-add-line"></i>
+            <span>Создать договор</span>
+          </Link>
+        </div>
+
         {/* Статистика */}
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
@@ -472,14 +499,6 @@ export default function ContractsPage() {
               )}
             </div>
           )}
-        </div>
-
-        {/* Кнопка создания нового договора */}
-        <div style={{ marginTop: '2rem', textAlign: 'right' }}>
-          <Link href="/admin/contracts/new" className={styles.createButton}>
-            <i className="ri-add-line"></i>
-            <span>Создать новый договор</span>
-          </Link>
         </div>
       </main>
     </div>

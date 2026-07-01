@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import userService from '@/services/user.service';
 import organizationService from '@/services/organization.service';
 import accessListService from '@/services/access-list.service';
@@ -11,12 +14,22 @@ import { Organization, AccessList, ApiError } from '@/types';
 import styles from './page.module.css';
 import Header from '@/components/Header/Header';
 
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+  },
+});
+
 export default function NewUserPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [accessLists, setAccessLists] = useState<AccessList[]>([]);
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [touched, setTouched] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -56,10 +69,17 @@ export default function NewUserPage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Сбрасываем списки только для ролей которым они не нужны
     if (name === 'roleId' && value !== '4' && value !== '2') {
       setSelectedLists([]);
     }
+  };
+
+  const handleOrganizationChange = (_event: React.SyntheticEvent, newValue: Organization | null) => {
+    setSelectedOrg(newValue);
+    setFormData(prev => ({
+      ...prev,
+      organizationId: newValue ? newValue.id : ''
+    }));
   };
 
   const handleListToggle = (listId: string) => {
@@ -82,6 +102,7 @@ export default function NewUserPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTouched(true);
     
     if (!formData.username.trim()) { toast.error('Введите логин'); return; }
     if (formData.username.length < 3) { toast.error('Логин должен содержать минимум 3 символа'); return; }
@@ -104,7 +125,6 @@ export default function NewUserPage() {
         roleId: parseInt(formData.roleId),
       });
       
-      // Права на списки только для участника и оператора
       if ((formData.roleId === '4' || formData.roleId === '2') && selectedLists.length > 0) {
         try {
           for (const listId of selectedLists) {
@@ -134,129 +154,153 @@ export default function NewUserPage() {
     }
   };
 
-  // Списки показываем только для участника и оператора (не для менеджера пропусков)
   const showListSelection = formData.roleId === '4' || formData.roleId === '2';
   const showOrganizationSelection = formData.roleId === '4';
 
   return (
-    <div className={styles.container}>
-      <Header role='admin'/>
+    <ThemeProvider theme={theme}>
+      <div className={styles.container}>
+        <Header role='admin'/>
 
-      <div className={styles.main}>
-        <div className={styles.formCard}>
-          <form onSubmit={handleSubmit} className={styles.form}>
-            <div className={styles.formGroup}>
-              <label htmlFor="username" className={styles.label}>Логин <span className={styles.required}>*</span></label>
-              <input type="text" id="username" name="username" value={formData.username} onChange={handleChange} className={styles.input} placeholder="ivanov_i" disabled={loading} required />
-              <p className={styles.help}>Минимум 3 символа</p>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="password" className={styles.label}>Пароль <span className={styles.required}>*</span></label>
-              <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className={styles.input} placeholder="••••••••" disabled={loading} required />
-              <p className={styles.help}>Минимум 6 символов</p>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="fullName" className={styles.label}>ФИО <span className={styles.required}>*</span></label>
-              <input type="text" id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} className={styles.input} placeholder="Иванов Иван Иванович" disabled={loading} required />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="roleId" className={styles.label}>Роль <span className={styles.required}>*</span></label>
-              <select id="roleId" name="roleId" value={formData.roleId} onChange={handleChange} className={styles.select} disabled={loading} required>
-                <option value="1">Администратор</option>
-                <option value="2">Оператор КПП 1</option>
-                <option value="6">Оператор SmartParking</option>
-                <option value="3">Руководитель</option>
-                <option value="4">Участник</option>
-                <option value="5">Охрана</option>
-                <option value="7">Менеджер пропусков</option>
-              </select>
-            </div>
-
-            {showOrganizationSelection && (
+        <div className={styles.main}>
+          <div className={styles.formCard}>
+            <form onSubmit={handleSubmit} className={styles.form}>
               <div className={styles.formGroup}>
-                <label htmlFor="organizationId" className={styles.label}>Организация <span className={styles.required}>*</span></label>
-                <select id="organizationId" name="organizationId" value={formData.organizationId} onChange={handleChange} className={styles.select} disabled={loading || organizations?.length === 0} required>
-                  <option value="">Выберите организацию</option>
-                  {organizations?.map((org) => (
-                    <option key={org.id} value={org.id}>{org.name} ({org.bin})</option>
-                  ))}
+                <label htmlFor="username" className={styles.label}>Логин <span className={styles.required}>*</span></label>
+                <input type="text" id="username" name="username" value={formData.username} onChange={handleChange} className={styles.input} placeholder="ivanov_i" disabled={loading} required />
+                <p className={styles.help}>Минимум 3 символа</p>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="password" className={styles.label}>Пароль <span className={styles.required}>*</span></label>
+                <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className={styles.input} placeholder="••••••••" disabled={loading} required />
+                <p className={styles.help}>Минимум 6 символов</p>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="fullName" className={styles.label}>ФИО <span className={styles.required}>*</span></label>
+                <input type="text" id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} className={styles.input} placeholder="Иванов Иван Иванович" disabled={loading} required />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="roleId" className={styles.label}>Роль <span className={styles.required}>*</span></label>
+                <select id="roleId" name="roleId" value={formData.roleId} onChange={handleChange} className={styles.select} disabled={loading} required>
+                  <option value="1">Администратор</option>
+                  <option value="2">Оператор КПП 1</option>
+                  <option value="6">Оператор SmartParking</option>
+                  <option value="3">Руководитель</option>
+                  <option value="4">Участник</option>
+                  <option value="5">Охрана</option>
+                  <option value="7">Менеджер пропусков</option>
                 </select>
-                {organizations?.length === 0 && (
-                  <p className={styles.error}>Нет доступных организаций. <Link href="/admin/organizations/new" className={styles.errorLink}>Создайте организацию</Link></p>
-                )}
               </div>
-            )}
 
-            {showListSelection && accessLists?.length > 0 && (
-              <div className={styles.formGroup}>
-                <div className={styles.listsHeader}>
-                  <label className={styles.label}>
-                    {formData.roleId === '2' ? 'Списки для просмотра' : 'Списки для подачи заявок'}
-                  </label>
-                  <button type="button" onClick={handleSelectAll} className={styles.selectAllButton} disabled={loading}>
-                    {selectedLists.length === accessLists.length ? 'Снять все' : 'Выбрать все'}
-                  </button>
+              {showOrganizationSelection && (
+                <div className={styles.formGroup}>
+                  <label htmlFor="organizationId" className={styles.label}>Организация <span className={styles.required}>*</span></label>
+                  <Autocomplete
+                    id="organizationId"
+                    options={organizations}
+                    getOptionLabel={(option: Organization) => `${option.name} (${option.bin})`}
+                    value={selectedOrg}
+                    onChange={handleOrganizationChange}
+                    disabled={loading || organizations?.length === 0}
+                    isOptionEqualToValue={(option: Organization, value: Organization) => option.id === value.id}
+                    noOptionsText="Организации не найдены"
+                    loadingText="Загрузка..."
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Выберите организацию"
+                        variant="outlined"
+                        size="small"
+                        error={touched && formData.roleId === '4' && !formData.organizationId}
+                        helperText={touched && formData.roleId === '4' && !formData.organizationId ? 'Выберите организацию' : ''}
+                      />
+                    )}
+                    renderOption={(props, option: Organization) => (
+                      <li {...props} key={option.id}>
+                        <div>
+                          <div style={{ fontWeight: 500 }}>{option.name}</div>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>БИН: {option.bin}</div>
+                        </div>
+                      </li>
+                    )}
+                  />
+                  {organizations?.length === 0 && (
+                    <p className={styles.error}>Нет доступных организаций. <Link href="/admin/organizations/new" className={styles.errorLink}>Создайте организацию</Link></p>
+                  )}
                 </div>
-                <div className={styles.listsGrid}>
-                  {accessLists.map((list) => (
-                    <label key={list.id} className={styles.listItem}
-                      style={{ borderColor: selectedLists.includes(list.id) ? list.color : '#e5e7eb', backgroundColor: selectedLists.includes(list.id) ? `${list.color}10` : 'white' }}>
-                      <input type="checkbox" checked={selectedLists.includes(list.id)} onChange={() => handleListToggle(list.id)} className={styles.listCheckbox} disabled={loading} />
-                      <span className={styles.listColor} style={{ backgroundColor: list.color }}></span>
-                      <div className={styles.listInfo}>
-                        <span className={styles.listName}>{list.name}</span>
-                        {list.description && <span className={styles.listDescription}>{list.description}</span>}
-                      </div>
-                      {list.priority !== undefined && <span className={styles.listPriority}>Приоритет: {list.priority}</span>}
+              )}
+
+              {showListSelection && accessLists?.length > 0 && (
+                <div className={styles.formGroup}>
+                  <div className={styles.listsHeader}>
+                    <label className={styles.label}>
+                      {formData.roleId === '2' ? 'Списки для просмотра' : 'Списки для подачи заявок'}
                     </label>
-                  ))}
+                    <button type="button" onClick={handleSelectAll} className={styles.selectAllButton} disabled={loading}>
+                      {selectedLists.length === accessLists.length ? 'Снять все' : 'Выбрать все'}
+                    </button>
+                  </div>
+                  <div className={styles.listsGrid}>
+                    {accessLists.map((list) => (
+                      <label key={list.id} className={styles.listItem}
+                        style={{ borderColor: selectedLists.includes(list.id) ? list.color : '#e5e7eb', backgroundColor: selectedLists.includes(list.id) ? `${list.color}10` : 'white' }}>
+                        <input type="checkbox" checked={selectedLists.includes(list.id)} onChange={() => handleListToggle(list.id)} className={styles.listCheckbox} disabled={loading} />
+                        <span className={styles.listColor} style={{ backgroundColor: list.color }}></span>
+                        <div className={styles.listInfo}>
+                          <span className={styles.listName}>{list.name}</span>
+                          {list.description && <span className={styles.listDescription}>{list.description}</span>}
+                        </div>
+                        {list.priority !== undefined && <span className={styles.listPriority}>Приоритет: {list.priority}</span>}
+                      </label>
+                    ))}
+                  </div>
+                  <p className={styles.help}>Выбрано списков: {selectedLists.length} из {accessLists.length}</p>
                 </div>
-                <p className={styles.help}>Выбрано списков: {selectedLists.length} из {accessLists.length}</p>
+              )}
+
+              <div className={styles.formGroup}>
+                <label htmlFor="email" className={styles.label}>Email</label>
+                <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className={styles.input} placeholder="ivan.ivanov@example.com" disabled={loading} />
               </div>
-            )}
 
-            <div className={styles.formGroup}>
-              <label htmlFor="email" className={styles.label}>Email</label>
-              <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className={styles.input} placeholder="ivan.ivanov@example.com" disabled={loading} />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="phone" className={styles.label}>Телефон</label>
-              <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} className={styles.input} placeholder="+7 (777) 123-45-67" disabled={loading} />
-            </div>
-
-            <div className={styles.infoBox}>
-              <i className="ri-information-line"></i>
-              <div className={styles.infoContent}>
-                <p className={styles.infoTitle}>О ролях:</p>
-                <ul className={styles.infoList}>
-                  <li><strong>Администратор</strong> - полный доступ к системе</li>
-                  <li><strong>Оператор КПП 1</strong> - обработка заявок на КПП 1 и просмотр выбранных списков</li>
-                  <li><strong>Оператор SmartParking</strong> - обработка заявок на SmartParking, интеграция с Parqour</li>
-                  <li><strong>Руководитель</strong> - финальное утверждение заявок КПП 1</li>
-                  <li><strong>Участник</strong> - подача заявок (требуется организация и списки)</li>
-                  <li><strong>Охрана</strong> - просмотр списков и истории</li>
-                  <li><strong>Менеджер пропусков</strong> - управление номерами во всех списках (без управления списками)</li>
-                </ul>
+              <div className={styles.formGroup}>
+                <label htmlFor="phone" className={styles.label}>Телефон</label>
+                <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} className={styles.input} placeholder="+7 (777) 123-45-67" disabled={loading} />
               </div>
-            </div>
 
-            <div className={styles.formActions}>
-              <Link href="/admin/users" className={styles.cancelButton}>Отмена</Link>
-              <button type="submit" className={styles.submitButton} disabled={loading}>
-                {loading ? (
-                  <><i className="ri-loader-4-line ri-spin"></i><span>Создание...</span></>
-                ) : (
-                  <><i className="ri-user-add-line"></i><span>Создать пользователя</span></>
-                )}
-              </button>
-            </div>
-          </form>
+              <div className={styles.infoBox}>
+                <i className="ri-information-line"></i>
+                <div className={styles.infoContent}>
+                  <p className={styles.infoTitle}>О ролях:</p>
+                  <ul className={styles.infoList}>
+                    <li><strong>Администратор</strong> - полный доступ к системе</li>
+                    <li><strong>Оператор КПП 1</strong> - обработка заявок на КПП 1 и просмотр выбранных списков</li>
+                    <li><strong>Оператор SmartParking</strong> - обработка заявок на SmartParking, интеграция с Parqour</li>
+                    <li><strong>Руководитель</strong> - финальное утверждение заявок КПП 1</li>
+                    <li><strong>Участник</strong> - подача заявок (требуется организация и списки)</li>
+                    <li><strong>Охрана</strong> - просмотр списков и истории</li>
+                    <li><strong>Менеджер пропусков</strong> - управление номерами во всех списках (без управления списками)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className={styles.formActions}>
+                <Link href="/admin/users" className={styles.cancelButton}>Отмена</Link>
+                <button type="submit" className={styles.submitButton} disabled={loading}>
+                  {loading ? (
+                    <><i className="ri-loader-4-line ri-spin"></i><span>Создание...</span></>
+                  ) : (
+                    <><i className="ri-user-add-line"></i><span>Создать пользователя</span></>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }

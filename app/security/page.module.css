@@ -23,7 +23,6 @@
 
 .container {
   padding-top: 100px;
-
   width: 100%;
   height: 100vh;
   max-height: 100%;
@@ -31,6 +30,7 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
 }
+
 .main::-webkit-scrollbar {
   display: none;
 }
@@ -72,7 +72,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 0; /* Важно для flex-контейнера */
+  min-height: 0;
 }
 
 .content {
@@ -110,26 +110,34 @@
   display: none;
 }
 
+/* ИСПРАВЛЕННЫЙ БЛОК */
 .videoContainer {
   position: relative;
   width: 100%;
   border-radius: 1rem;
   overflow: hidden;
   background: var(--dark);
-  aspect-ratio: 16/9;
+  /* Убираем фиксированный aspect-ratio */
+  /* aspect-ratio: 16/9; */ /* ЗАКОММЕНТИРОВАНО - больше не обрезает */
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   border: 2px solid rgba(99, 102, 241, 0.2);
+  /* Даем контейнеру адаптироваться под видео */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .video {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto; /* Адаптивная высота */
+  max-height: 70vh; /* Максимальная высота 70% экрана */
+  object-fit: contain; /* ВАЖНО! contain вместо cover */
+  display: block;
   transition: transform 0.5s ease;
 }
 
 .videoContainer:hover .video {
-  transform: scale(1.05);
+  transform: scale(1.02); /* Уменьшил scale чтобы не вылезало */
 }
 
 .videoOverlay {
@@ -146,10 +154,12 @@
   gap: 1.5rem;
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none; /* Чтобы не мешал кликам по видео */
 }
 
 .videoContainer:hover .videoOverlay {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .overlayText {
@@ -228,7 +238,7 @@
   border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
-/* Sidebar - фиксирован снизу, высота 30% */
+/* Sidebar */
 .sidebar {
   width: 100%;
   height: var(--sidebar-height);
@@ -242,12 +252,10 @@
   box-sizing: border-box;
 }
 
-/* Статистика - скрыта */
 .statsCard {
   display: none;
 }
 
-/* Логи - горизонтальные, занимают весь sidebar */
 .sidebarCard {
   flex: 1;
   padding: 0.75rem;
@@ -447,7 +455,6 @@
   font-size: 0.7rem;
 }
 
-/* Пустое состояние */
 .emptyLogs {
   text-align: center;
   padding: 2rem;
@@ -471,12 +478,10 @@
   opacity: 0.5;
 }
 
-/* Информационная карточка - скрыта */
 .infoCard {
   display: none;
 }
 
-/* WebSocket статус */
 .wsStatus {
   position: fixed;
   bottom: 1rem;
@@ -630,49 +635,11 @@
   gap: 0.5rem;
 }
 
-/* Animations */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .videoSection {
-    padding: 0.5rem;
-  }
-  
-  .overlayContent {
-    padding: 1rem 1.5rem;
-    min-width: 280px;
-  }
-  
-  .overlayTitle {
-    font-size: 1.25rem;
-  }
-  
-  .overlayPlate {
-    font-size: 1.25rem;
-  }
-  
-  .sidebarCard {
-    padding: 0.5rem;
-  }
-  
-  .logItem {
-    min-width: 260px;
-  }
-}
-
-@media (max-width: 480px) {
-  .logPlate {
-    font-size: 0.85rem;
-  }
-  
-  .logItem {
-    min-width: 240px;
-  }
-}
 /* Секция поиска */
 .searchSection {
   padding: 16px 20px;
@@ -680,7 +647,6 @@
   background: #fafafa;
   margin-bottom: 15px;
   border-radius: 16px;
-
 }
 
 .searchForm {
@@ -712,7 +678,6 @@
   text-transform: uppercase;
   font-family: monospace;
   letter-spacing: 1px;
-  
 }
 
 .searchInput:focus {
@@ -772,7 +737,6 @@
   cursor: not-allowed;
 }
 
-/* Результат поиска */
 .searchResult {
   margin-top: 16px;
   padding: 16px;
@@ -843,16 +807,6 @@
   font-size: 13px;
 }
 
-/* Адаптивность */
-@media (max-width: 768px) {
-  .searchForm {
-    flex-direction: column;
-  }
-  
-  .searchSubmitButton {
-    justify-content: center;
-  }
-}
 /* Выпадающий список с подсказками */
 .suggestionsDropdown {
   position: absolute;
@@ -931,6 +885,8 @@
 .noSuggestions i {
   font-size: 18px;
 }
+
+/* Похожие номера */
 .similarNumbers {
   position: absolute;
   top: 25%;
@@ -1016,7 +972,6 @@
   padding: 12px 0;
 }
 
-/* Скроллбар */
 .similarNumbers::-webkit-scrollbar {
   width: 4px;
 }
@@ -1030,8 +985,41 @@
   border-radius: 2px;
 }
 
-/* Мобильная версия */
+/* Responsive Design */
 @media (max-width: 768px) {
+  .videoSection {
+    padding: 0.5rem;
+  }
+  
+  .overlayContent {
+    padding: 1rem 1.5rem;
+    min-width: 280px;
+  }
+  
+  .overlayTitle {
+    font-size: 1.25rem;
+  }
+  
+  .overlayPlate {
+    font-size: 1.25rem;
+  }
+  
+  .sidebarCard {
+    padding: 0.5rem;
+  }
+  
+  .logItem {
+    min-width: 260px;
+  }
+  
+  .searchForm {
+    flex-direction: column;
+  }
+  
+  .searchSubmitButton {
+    justify-content: center;
+  }
+  
   .similarNumbers {
     position: relative;
     top: auto;
@@ -1039,5 +1027,15 @@
     width: 100%;
     max-height: 200px;
     margin-top: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logPlate {
+    font-size: 0.85rem;
+  }
+  
+  .logItem {
+    min-width: 240px;
   }
 }

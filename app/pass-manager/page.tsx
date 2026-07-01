@@ -23,6 +23,7 @@ interface Plate {
   listColor: string;
   isActive: boolean;
   notes?: string;
+  validUntil?: string;
   createdAt: string;
 }
 
@@ -49,6 +50,11 @@ export default function PassManagerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const getDefaultValidUntil = () => {
+    const currentYear = new Date().getFullYear();
+    return `${currentYear}-12-31`;
+  };
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     plateNumber: '',
@@ -58,6 +64,7 @@ export default function PassManagerPage() {
     organizationId: '',
     withoutOrg: false,
     notes: '',
+    validUntil: getDefaultValidUntil(),
   });
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
 
@@ -148,10 +155,11 @@ export default function PassManagerPage() {
         organizationId: formData.withoutOrg ? '' : formData.organizationId,
         withoutOrg: formData.withoutOrg,
         notes: formData.notes,
+        validUntil: formData.validUntil,
       });
       toast.success('Номер добавлен');
       setShowAddForm(false);
-      setFormData({ plateNumber: '', vehicleBrand: '', vehicleModel: '', vehicleColor: '', organizationId: '', withoutOrg: false, notes: '' });
+      setFormData({ plateNumber: '', vehicleBrand: '', vehicleModel: '', vehicleColor: '', organizationId: '', withoutOrg: false, notes: '', validUntil: getDefaultValidUntil() });
       setSelectedOrg(null);
       loadPlates(selectedListId);
     } catch (error: unknown) {
@@ -181,6 +189,7 @@ export default function PassManagerPage() {
         listId: editingPlate.listId,
         notes: editingPlate.notes,
         isActive: editingPlate.isActive,
+        validUntil: editingPlate.validUntil,
       });
       toast.success('Номер обновлен');
       setEditingPlate(null);
@@ -271,6 +280,7 @@ export default function PassManagerPage() {
                 <th>Организация</th>
                 <th>Список</th>
                 <th>Статус</th>
+                <th>Действует до</th>
                 <th>Действия</th>
               </tr>
             </thead>
@@ -289,6 +299,11 @@ export default function PassManagerPage() {
                     </span>
                   </td>
                   <td>
+                    {plate.validUntil 
+                      ? new Date(plate.validUntil).toLocaleDateString('ru-RU')
+                      : 'Бессрочно'}
+                  </td>
+                  <td>
                     <div className={styles.actions}>
                       <button className={styles.actionBtn} onClick={() => {
                         setEditingPlate(plate);
@@ -304,7 +319,7 @@ export default function PassManagerPage() {
                 </tr>
               ))}
               {filteredPlates.length === 0 && (
-                <tr><td colSpan={5} className={styles.empty}>Номера не найдены</td></tr>
+                <tr><td colSpan={6} className={styles.empty}>Номера не найдены</td></tr>
               )}
             </tbody>
           </table>
@@ -319,7 +334,7 @@ export default function PassManagerPage() {
             <form onSubmit={handleAddPlate}>
               <input 
                 type="text" 
-                placeholder="Гос. номер * (латиница и цифры)" 
+                placeholder="Гос. номер *" 
                 value={formData.plateNumber} 
                 onChange={e => setFormData(prev => ({ ...prev, plateNumber: formatPlateNumber(e.target.value) }))} 
                 required 
@@ -332,7 +347,7 @@ export default function PassManagerPage() {
                 options={organizations.filter((org) => org.name !== "Гость")}
                 value={selectedOrg}
                 onChange={(newValue) => {
-                  setSelectedOrg(newValue);
+                  setSelectedOrg(newValue as Organization);
                   setFormData(prev => ({ ...prev, organizationId: newValue?.id || '' }));
                 }}
                 placeholder="Поиск организации..."
@@ -347,6 +362,17 @@ export default function PassManagerPage() {
                 }} />
                 Без организации (Гость)
               </label>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Действует до</label>
+                <input
+                  type="date"
+                  value={formData.validUntil}
+                  onChange={e => setFormData(prev => ({ ...prev, validUntil: e.target.value }))}
+                  className={styles.input}
+                  min={new Date().toISOString().split('T')[0]}
+                  max={`${new Date().getFullYear()}-12-31`}
+                />
+              </div>
               <textarea 
                 placeholder="Примечания *" 
                 value={formData.notes} 
@@ -381,12 +407,24 @@ export default function PassManagerPage() {
                 options={lists}
                 value={selectedEditList}
                 onChange={(newValue) => {
-                  setSelectedEditList(newValue);
+                  setSelectedEditList(newValue as AccessList);
                   setEditingPlate(prev => prev ? { ...prev, listId: newValue?.id || '' } : null);
                 }}
                 placeholder="Поиск списка..."
                 noOptionsText="Списки не найдены"
               />
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Действует до</label>
+                <input
+                  type="date"
+                  value={editingPlate.validUntil ? editingPlate.validUntil.split('T')[0] : ''}
+                  onChange={e => setEditingPlate(prev => prev ? { ...prev, validUntil: e.target.value } : null)}
+                  className={styles.input}
+                  min={new Date().toISOString().split('T')[0]}
+                  max={`${new Date().getFullYear()}-12-31`}
+                />
+              </div>
 
               <label className={styles.checkbox}>
                 <input type="checkbox" checked={editingPlate.isActive} onChange={e => setEditingPlate(prev => prev ? { ...prev, isActive: e.target.checked } : null)} />
