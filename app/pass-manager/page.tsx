@@ -115,14 +115,30 @@ export default function PassManagerPage() {
     }
   };
 
-  const loadPlates = async (listId: string) => {
-    try {
-      const res = await api.get(`/pass-manager/plates/${listId}`);
-      setPlates(res.data || []);
-    } catch (error) {
-      console.error('Error loading plates:', error);
-    }
-  };
+const loadPlates = async (listId: string) => {
+  try {
+    const res = await api.get(`/pass-manager/plates/${listId}`);
+    const platesData = res.data || [];
+    
+    // Обновляем статус для номеров с истекшим сроком
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    
+    const updatedPlates = platesData.map((plate: Plate) => {
+      if (plate.isActive && plate.validUntil) {
+        const validUntil = new Date(plate.validUntil);
+        if (validUntil < todayStart) {
+          return { ...plate, isActive: false };
+        }
+      }
+      return plate;
+    });
+    
+    setPlates(updatedPlates);
+  } catch (error) {
+    console.error('Error loading plates:', error);
+  }
+};
 
   const handleListChange = (listId: string) => {
     setSelectedListId(listId);

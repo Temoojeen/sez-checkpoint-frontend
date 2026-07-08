@@ -66,28 +66,42 @@ export default function AdminApprovedPlatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataLoaded]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      const [platesData, listsData, orgsData] = await Promise.all([
-        approvedPlateService.getAll(),
-        accessListService.getAll(),
-        organizationService.getAll(),
-      ]);
-      
-      setPlates(Array.isArray(platesData) ? platesData : []);
-      setAccessLists(Array.isArray(listsData) ? listsData : []);
-      setOrganizations(Array.isArray(orgsData) ? orgsData : []);
-      
-      setDataLoaded(true);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Ошибка при загрузке данных');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+const fetchData = useCallback(async () => {
+  try {
+    setLoading(true);
+    
+    const [platesData, listsData, orgsData] = await Promise.all([
+      approvedPlateService.getAll(),
+      accessListService.getAll(),
+      organizationService.getAll(),
+    ]);
+    
+    // Обновляем статус для номеров с истекшим сроком
+    const updatedPlates = (Array.isArray(platesData) ? platesData : []).map(plate => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      if (plate.isActive && plate.validUntil) {
+        const validUntil = new Date(plate.validUntil);
+        validUntil.setHours(23, 59, 59, 999);
+        if (validUntil < now) {
+          return { ...plate, isActive: false };
+        }
+      }
+      return plate;
+    });
+    
+    setPlates(updatedPlates);
+    setAccessLists(Array.isArray(listsData) ? listsData : []);
+    setOrganizations(Array.isArray(orgsData) ? orgsData : []);
+    
+    setDataLoaded(true);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    toast.error('Ошибка при загрузке данных');
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   const handleListChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedList(e.target.value);
@@ -106,43 +120,44 @@ export default function AdminApprovedPlatesPage() {
     fetchData();
   };
 
-  const openAddModal = () => {
-    setEditingPlate(null);
-    setSelectedOrg(null);
-    setSelectedAccessList(null);
-    setTouched(false);
-    setFormData({
-      plateNumber: '',
-      vehicleBrand: '',
-      vehicleModel: '',
-      vehicleColor: '',
-      organizationId: '',
-      listId: '',
-      validFrom: '',
-      validUntil: '',
-      notes: '',
-    });
-    setModalOpen(true);
-  };
+const openAddModal = () => {
+  const currentYear = new Date().getFullYear();
+  setEditingPlate(null);
+  setSelectedOrg(null);
+  setSelectedAccessList(null);
+  setTouched(false);
+  setFormData({
+    plateNumber: '',
+    vehicleBrand: '',
+    vehicleModel: '',
+    vehicleColor: '',
+    organizationId: '',
+    listId: '',
+    validFrom: '',
+    validUntil: `${currentYear}-12-31`, // <-- до конца года
+    notes: '',
+  });
+  setModalOpen(true);
+};
 
-  const openEditModal = (plate: ApprovedPlate) => {
-    setEditingPlate(plate);
-    setSelectedOrg(organizations.find(org => org.id === plate.organizationId) || null);
-    setSelectedAccessList(accessLists.find(list => list.id === plate.listId) || null);
-    setTouched(false);
-    setFormData({
-      plateNumber: plate.plateNumber,
-      vehicleBrand: plate.vehicleBrand || '',
-      vehicleModel: plate.vehicleModel || '',
-      vehicleColor: plate.vehicleColor || '',
-      organizationId: plate.organizationId || '',
-      listId: plate.listId,
-      validFrom: plate.validFrom || '',
-      validUntil: plate.validUntil || '',
-      notes: plate.notes || '',
-    });
-    setModalOpen(true);
-  };
+ const openEditModal = (plate: ApprovedPlate) => {
+  setEditingPlate(plate);
+  setSelectedOrg(organizations.find(org => org.id === plate.organizationId) || null);
+  setSelectedAccessList(accessLists.find(list => list.id === plate.listId) || null);
+  setTouched(false);
+  setFormData({
+    plateNumber: plate.plateNumber,
+    vehicleBrand: plate.vehicleBrand || '',
+    vehicleModel: plate.vehicleModel || '',
+    vehicleColor: plate.vehicleColor || '',
+    organizationId: plate.organizationId || '',
+    listId: plate.listId,
+    validFrom: plate.validFrom ? plate.validFrom.split('T')[0] : '',
+    validUntil: plate.validUntil ? plate.validUntil.split('T')[0] : '',
+    notes: plate.notes || '',
+  });
+  setModalOpen(true);
+};
 
   const closeModal = () => {
     setModalOpen(false);
